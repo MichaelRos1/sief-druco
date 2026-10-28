@@ -1,6 +1,6 @@
 # Preknowledge: Track B (Burden) of the polypharmacy side-effect project
 
-**Status:** In progress — 1/5 done
+**Status:** 5/5 topics done — Ready check pending
 
 ## How to work through this file
 
@@ -54,25 +54,29 @@ A personal project. The user wants to understand what they are doing so they can
   - Done when: A participant has interview weight 30,000 in 2015–16 and you pool 2015–16 with the 2017–Mar 2020 file. What does the weight mean, what happens to it in the pool, and why do you need strata and PSUs to put an error bar on a pair's prevalence?
   - Takeaway: A weight is how many Americans a participant represents. When pooling, each file's weights alone add up to the whole population, so multiply each weight by (cycle length / total years pooled), or the estimate is counted once per file. Strata and PSUs tell the software who was sampled together (similar doctors and prescribing), so the error bars aren't too narrow.
 
-- [ ] **From NHANES drug records to Decagon IDs**
+- [x] **From NHANES drug records to Decagon IDs**
   - Why: a drug that doesn't map gets no score. This is the coverage pilot (#16), the failed-mappings decision, and how pairs outside the 645 are represented (#17). Covers: the reverse route chosen by the user (Decagon's 645: STITCH ID → PubChem CID → RxNorm ingredient, mapped once; NHANES: Multum code (`RXDDRGID`) → RxNorm, PIN → IN, MIN split into INs; join on the ingredient), where it breaks and the two failure reasons (*not in the model* vs. *mapping failed*), the four coverage numbers (drugs, mentions, participants with ≥ 2 drugs, weighted pairs), and a cached, resumable, rate-limited lookup loop. Facts: issue #12 and its route comment.
   - Depth: working
   - Done when: Walk the NHANES record "amlodipine; benazepril" to Decagon IDs with the reverse route. Name each hop, one place it can fail, which of the two failure reasons that is, and which coverage number it lowers. How do you write the lookup so a crash halfway costs nothing?
+  - Takeaway: Because the model is transductive, map Decagon's 645 drugs to RxNorm once, bring each NHANES drug down to RxNorm ingredients, and join on the ingredient. A drug outside the 645 can't be scored and is only reported; a drug that is in the 645 but fails to map is a bug to fix. (Closed at the user's request without the check question; the final Ready check should include it.)
 
 - [ ] **What the model's probability means, and the burden formula**
   - Why: this is the burden formula (#18) and what the model has to hand over (#17). Covers: `p` as a calibrated probability, prevalence × `p` as an expected count, why a good ranking isn't enough, what summing over 964 overlapping side effects counts, why every side effect counts equally (severity weights are out of scope, deferred to #20), label vs. prediction for pairs Decagon already labels, and storing each participant's full drug set so drug sets can be added later.
   - Depth: working
   - Done when: With `p` = 0.10 for nausea and 2M people taking the pair, what is 200,000, and what must be true about 0.10? Summed over all 964 side effects, what does the total count, and why could a pair rank top just from many mild side effects?
+  - Takeaway: `p` must be calibrated (checked on held-out pairs with a reliability diagram / ECE), otherwise a distorted scale reorders pairs with different prevalence. Prevalence × `p` is the expected number of people exposed to a pair that carries the side-effect signal, not the number of people who get the side effect; summed over 964 side effects it is an expected count of (person × side-effect signal). (Closed at the user's request: the first answer read 200,000 as nausea cases and was corrected; the follow-up on that and the "many mild side effects" part went unanswered. The final Ready check should include both.)
 
 - [ ] **"Undocumented" as a matching problem**
   - Why: the novelty claim in RQ3 (#19). Covers: Decagon's own labels vs. an external reference, references that say only "these interact" (DDInter) vs. ones that name the side effect (CRESCENDDI), why TWOSIDES isn't independent evidence, and why "not found" can mean the reference simply doesn't include that drug. Facts: issue #13.
   - Depth: working
   - Done when: Your top pair has a high bleeding burden. DDInter lists it as "Major" with no side effect named, and it is not in Decagon's labels. Is it documented? Give two definitions and what each lets you claim.
+  - Takeaway: TWOSIDES is no evidence, because Decagon is derived from it. "Not found" can mean a failed mapping, a drug the reference doesn't include, or both drugs covered with no entry; only the last one makes a pair undocumented. DDInter only says a pair interacts (with a severity), CRESCENDDI names the adverse event, so DDInter can confirm "documented" only at pair level and CRESCENDDI at side-effect level. (Closed at the user's request: the answer to part 1 named internal vs. external references but not pair level vs. side-effect level; the follow-up check on that went unanswered. The final Ready check should include it.)
 
 - [ ] **Uncertainty and ranking stability**
   - Why: uncertainty reporting (#18) and validating the ranking (`7.1`: MEPS robustness check, positive controls). Covers: the two sources of uncertainty (survey sampling of prevalence, model `p`), bootstrap at concept level, top-k overlap between two rankings, and positive controls as a sanity check.
   - Depth: working
   - Done when: Pair A ranks #3 and pair B ranks #5. When can you say A really carries more burden than B? How do you check that your top 20 holds up when NHANES is swapped for MEPS?
+  - Takeaway: Burden has two uncertain factors, the prevalence (survey sampling) and the model's `p` (seeds, training pairs, calibration), and nearby ranks are often within the noise. (Closed at the user's request: how to tell A from B (count the bootstrap runs where A > B), what error bars miss (systematic bias), and the MEPS top-20 overlap check (compare against NHANES's own bootstrap overlap; year-long purchases vs. 30-day use) were explained but not answered back; the follow-up check went unanswered. The final Ready check should include all three.)
 
 ## Not yet clear
 
