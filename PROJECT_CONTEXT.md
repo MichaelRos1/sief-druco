@@ -114,7 +114,12 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 | DrugBank interactions | Reference for "already documented" pairs (RQ3) | Free for academic use |
 
 - **4.1 Why NHANES first:** it records drugs taken *currently* (past 30 days), so co-listed drugs are very likely taken at the same time. MEPS records purchases over a year, where co-listing does not guarantee concurrent use. Survey weights turn sample counts into US population estimates; several survey cycles can be pooled.
-- **4.2 Drug-name mapping (main data-engineering task):** NHANES generic drug names → active ingredients (split combination products such as "amlodipine; benazepril") → RxNorm → PubChem CID → STITCH ID (strip the `CID` prefix and leading zeros: `CID000002173` → PubChem `2173`). Cache results; log failed mappings.
+- **4.2 Drug-name mapping (main data-engineering task):** reverse route, meeting at the RxNorm ingredient (details and open checks: issue #12). The model is transductive, so only Decagon's 645 drugs need the hard hops.
+  1. **Decagon side (once):** STITCH ID → PubChem CID (strip the `CID` prefix and leading zeros: `CID000002173` → PubChem `2173`) → RxNorm ingredient. Save as a table; every one of the 645 is matched or listed with a reason.
+  2. **NHANES side:** Multum code (`RXDDRGID`) → RxNorm → ingredient level (salt forms stripped, e.g. metoprolol succinate → metoprolol; combination products such as "amlodipine; benazepril" split into their ingredients).
+  3. **Join** each NHANES ingredient against the Decagon table.
+  4. **Two failure reasons, kept apart:** *not in the model* (reached an ingredient outside the 645; reported only) and *mapping failed* (never reached an ingredient, or the Decagon drug never reached RxNorm; fixed where possible).
+  Cache every lookup to disk; log failures with their reason.
 - **4.3 Coverage must be reported:** the share of participants, drugs and co-prescribed pairs that map to Decagon's 645 drugs. Drugs outside Decagon cannot be scored by a transductive model.
 
 ---
