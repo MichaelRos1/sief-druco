@@ -554,13 +554,19 @@ unchanged except that 6.3 runs each encoder twice.
   | SAGEConv, collapsed | 0.13 s | 1.0 GB |
   | GATConv, collapsed | 0.43 s | 3.0 GB |
   | RGCNConv, 967 relations, 30 bases | 3.28 s | 6.2 GB |
+  | HGTConv, collapsed (ppi, targets, rev_targets, combo), heads = 4 | 0.53 s | 3.1 GB |
+
+  HGT was timed separately (same conventions: random edges at Decagon sizes, 71,000 drug–drug
+  edges, d = 64, second run; process peak 3.7 GB). It matches the derived ≈ 3–3.5 GB for the
+  collapsed graph (4.5). HGT with all 967 edge types (derived ≈ 12–15 GB, 3,868-iteration Python
+  loop without `pyg-lib`) was not run; 4.5 already rules it out.
 
   Driver memory includes the allocator's cache, so it is an upper bound on what the layer needs.
   It corrects two derived figures in section 4: **GAT measured 3.0 GB, not the ≈ 1–1.5 GB derived**
   (the first-pass 3–4 GB was closer), and **RGCN measured 6.2 GB vs. ≈ 5 GB derived**. Process peak
-  memory footprint over the whole run: 7.3 GB. All three encoders fit comfortably in 16 GB.
+  memory footprint over the whole run: 7.3 GB. All four encoders fit comfortably in 16 GB.
 - Still not measured: real epochs on the Decagon graph (needs the ppi / targets / mono files and a
-  training script) and HGT at full size.
+  training script). Moved to the encoder comparison ticket #8 when #3 was closed.
 
 ## 7. What remains unverified
 
