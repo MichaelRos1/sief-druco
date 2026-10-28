@@ -121,7 +121,7 @@ Gottlieb and CTCAE together cover 866 of the 963 (90%), only 15 more than Gottli
 | `effectcategories` CUIs (all are combo side effects; 399 of them are in the 963) | 561 | **260 (46.3%)** | 160 / 85 / 4 / 11 |
 | `bio-decagon-mono.csv` side effects (control set, not combo) | 10,184 | 3,074 (30.2%) | 2,952 / 74 / 14 / 34 |
 
-[derived; scripts in `research/.scratch/scripts/ime_match.py`]
+[derived; scripts in `local/data/scratch/severity-weights/scripts/ime_match.py`]
 - **Not measured on the 963:** that needs `bio-decagon-combo.csv` (blocked). The 46% above is for a subset of combo side effects that is not random. It is not an estimate for the 963.
 - **Version gap:** the SIDER 4.1 codes date from 2015 (an older MedDRA version). A PT that was demoted since then will not match a 29.1 PT code. The 8 "Deleted PTs" in 29.1 show that this happens. Fixing it needs the MedDRA LLT→PT tables, which need a licence [derived].
 - **Agreement with Gottlieb:** 927 of the 2,929 Gottlieb names are IME PT names. Their median `Rank score` is 0.657, against 0.424 for the rest. The probability that a random IME ADR outranks a random non-IME ADR (AUC) is **0.845** [derived]. So the binary IME flag and the crowd ranking agree to a large extent.
@@ -175,7 +175,7 @@ The PT/LLT status of the matched Gottlieb term was also recorded.
 | mono (control) | same-CUI | 72 | 56 | 16 | 0 | 0 | **0** |
 | mono (control) | PT parent | 49 | 16 | 0 | 23 | 5 | **5** |
 
-[derived: hand verdicts in `research/.scratch/scripts/verdicts.tsv`, tallies from `classify.py`]
+[derived: hand verdicts in `local/data/scratch/severity-weights/scripts/verdicts.tsv`, tallies from `classify.py`]
 
 **Findings** [derived]:
 - **Error rate among combo side effects: 0 of 173 wrong; 3 of 173 (1.7%) broader.** The broader ones are acute bronchitis → BRONCHITIS, causalgia → COMPLEX REGIONAL PAIN SYNDROME, and allergic vasculitis → LEUKOCYTOCLASTIC VASCULITIS. All three come from the PT parent path.
@@ -211,14 +211,14 @@ Uncovered side effects need a rule whichever source is used: drop them, give the
 - The first pass did not hand-check the matches: 522 come from exact names and 329 from SIDER synonyms. The second pass checked a proxy sample instead (see [section 7](#7-hand-check-of-the-synonym-matches)).
 - Scripts were throwaway and are not committed. Re-running takes the downloads above plus about 150 lines of stdlib Python.
 
-**Second pass (2026-10-28).** Downloads and scripts are in `research/.scratch/`, which is not committed (it holds a `.gitignore` of `*`).
-- Downloaded into `research/.scratch/data/`:
+**Second pass (2026-10-28).** Downloads and scripts are in `local/data/scratch/severity-weights/`, which is not committed (it holds a `.gitignore` of `*`).
+- Downloaded into `local/data/scratch/severity-weights/data/`:
   - `jmir_v17i3e80_app4.xlsx` (151,885 B)
   - SIDER `meddra.tsv.gz` (1,084,933 B) and `meddra_all_se.tsv.gz` (2,381,171 B) from `https://sideeffects.embl.de/media/download/`
   - `bio-decagon-mono.tar.gz` (1,928,066 B) and `bio-decagon-effectcategories.tar.gz` (7,742 B) from `http://snap.stanford.edu/decagon/`
   - IME 29.1 xlsx (442,616 B) and the IME criteria PDF (214,165 B) from EMA
   - `polypharmacy/utility.py` and `Exploratory Analysis.ipynb` from GitHub `mims-harvard/decagon`
-- Scripts in `research/.scratch/scripts/`, stdlib only and run with `python3 -I`:
+- Scripts in `local/data/scratch/severity-weights/scripts/`, stdlib only and run with `python3 -I`:
   - `match.py`: the matching rule; output in `syn_matches.tsv`
   - `verdicts.tsv`: hand verdicts; the default is "equivalent"
   - `classify.py`: tallies
@@ -246,7 +246,7 @@ Uncovered side effects need a rule whichever source is used: drop them, give the
 
 ## Follow-up 2026-10-28: 963 vs 964 on the downloaded Decagon file
 
-`bio-decagon-combo.tar.gz` (35,688,667 bytes) was downloaded to `data/raw/decagon/` in the main checkout (git-ignored) and counted with a stdlib script.
+`bio-decagon-combo.tar.gz` (35,688,667 bytes) was downloaded to `local/data/raw/decagon/` in the main checkout (git-ignored) and counted with a stdlib script.
 
 - The file has **1,317** side-effect types (not 1,318). [verified: `bio-decagon-combo.csv`]
 - With the ≥ 500 filter, **963** types remain, whether counted as raw rows, unordered pairs or ordered (drug 1, drug 2) keys: each pair appears once per side effect, so all three counts are equal. The next type below the cut is avascular necrosis with 498. [verified: same file] **964 cannot be reproduced from the public file** with a ≥ 500 rule; it would need a threshold of 498 or a different data version. The paper's 964 stays unexplained.

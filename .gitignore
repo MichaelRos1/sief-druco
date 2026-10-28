@@ -1,5 +1,6 @@
 .venv/
-data/
 .env
-papers/*.pdf
 .DS_Store
+local/
+.claude/worktrees/
+.claude/settings.local.json

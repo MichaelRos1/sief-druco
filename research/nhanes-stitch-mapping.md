@@ -177,16 +177,16 @@ This replaces the forward direction (RxNorm `IN` → UNII → PubChem CID) from 
 
 ## Follow-up 2026-10-28: checks on the downloaded Decagon file
 
-`bio-decagon-combo.tar.gz` (35,688,667 bytes, `http://snap.stanford.edu/decagon/bio-decagon-combo.tar.gz`) was downloaded to `data/raw/decagon/` in the main checkout (git-ignored) and read with a stdlib script.
+`bio-decagon-combo.tar.gz` (35,688,667 bytes, `http://snap.stanford.edu/decagon/bio-decagon-combo.tar.gz`) was downloaded to `local/data/raw/decagon/` in the main checkout (git-ignored) and read with a stdlib script.
 
 - **All 645 Decagon IDs start with `CID0`.** [verified: `bio-decagon-combo.csv`, 645 distinct IDs in `STITCH 1` / `STITCH 2`]
 - **The numbers behind the `CID0` prefix are mostly flat (stereo-unspecific) compound numbers, not stereo ones.** Compared with SIDER 4.1 `meddra_all_se.tsv.gz` (column 1 = flat `CID1…`, column 2 = stereo `CID0…`): 572 of the 645 numbers occur as a SIDER flat number and 380 as a stereo number. Among numbers that occur in only one of the two sets, **202 are flat-only and 10 are stereo-only**. [verified: both files, stdlib join on the numeric part] So the `CID000002173` → flat number pattern seen for ampicillin is the rule, not an exception. The README's "`CID0` = stereo" does not hold for Decagon's IDs.
 - **Consequence for the reverse route:** stripping `CID` and leading zeros gives a flat PubChem CID. Flat CIDs often have no UNII (as for 2173), so the fallback chain (parent CID → same-connectivity CIDs → RxNav name match) is the normal path for many drugs, not a rare one. The 10 stereo-only numbers need a hand check.
-- **Still blocked:** the share of NHANES codes that fail to map. `RXQ_RX_J.xpt` (9,627,680 bytes) is now downloaded to `data/raw/nhanes/`, but reading it needs pandas (not yet installed).
+- **Still blocked:** the share of NHANES codes that fail to map. `RXQ_RX_J.xpt` (9,627,680 bytes) is now downloaded to `local/data/raw/nhanes/`, but reading it needs pandas (not yet installed).
 
 ## Follow-up 2026-10-28: share of NHANES 2017–18 codes that reach an RxNorm ingredient
 
-`RXQ_RX_J.xpt` (NHANES 2017–18) read with pandas; each distinct `RXDDRGID` looked up live with `rxcui.json?idtype=MMSL_CODE&id=GN<code>`, then `rxcui/<rxcui>/related.json?tty=IN`. Every response is cached in `data/cache/rxnav_nhanes_2017.json` (main checkout, git-ignored). [verified: live RxNav, 2026-10-28]
+`RXQ_RX_J.xpt` (NHANES 2017–18) read with pandas; each distinct `RXDDRGID` looked up live with `rxcui.json?idtype=MMSL_CODE&id=GN<code>`, then `rxcui/<rxcui>/related.json?tty=IN`. Every response is cached in `local/data/cache/rxnav_nhanes_2017.json` (main checkout, git-ignored). [verified: live RxNav, 2026-10-28]
 
 | Outcome | Codes | Share | Mentions | Share |
 |---|---|---|---|---|

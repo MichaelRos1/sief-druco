@@ -1,11 +1,6 @@
 # Project Context: Polypharmacy Side-Effect Model × Real-World Co-Prescription Burden
 
 > **For the next model reading this:** This file holds everything decided so far. Use it to map out how to build the project. Every point has a stable ID (e.g. `3.2`, `5.4`); the user refers to points by these IDs.
->
-> **How to work with this user:**
-> - The user has hands-on PyTorch and PyTorch Geometric (PyG) experience and knows GNN basics, but not all of the underlying theory.
-> - **Do not hand the user decisions without the background knowledge needed to make them.** When a choice comes up, first explain how the options work (step by step, with small worked examples), then give a clear recommendation.
-> - **Ground every explanation in the Decagon graph** (nodes = drugs and proteins, edges = side effects / targets / protein interactions; see `3`). Do not drift into generic examples (e.g. atom-level molecular graphs) unless they are directly relevant.
 
 ---
 
