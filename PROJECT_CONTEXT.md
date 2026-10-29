@@ -171,9 +171,9 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 
 ### 5.5 Training
 1. Encoder forward on the full graph → z for all drugs.
-2. Batch of supervision triples (y = 1).
-3. Negatives: corrupt one side, (a, r, b′), with b′ drawn **in proportion to drug degree** (counters popularity bias).
-4. Decoder → logits; `BCEWithLogitsLoss`, optionally weighted per side effect.
+2. Supervision pairs, each with its **full row** of 963 labels (decided in #7). Every unlabelled triple is a plain 0, with no positive-unlabeled correction, so the model estimates P(pair reported with r).
+3. Negatives: none sampled by default; the full rows hold every zero. Switchable fallback: zeros drawn uniformly per side effect at one rate β, independent of the positives. Decagon's degree-proportional corruption is not used: it can never draw 29% of the zeros and distorts each pair differently.
+4. Decoder → logits; plain `BCEWithLogitsLoss` (no `pos_weight`, no focal), optionally weighted per side effect (#8).
 5. Backpropagate; Adam; early stopping on validation AUPRC.
 
 ---
@@ -189,7 +189,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
   2. Tensor factorisation (no encoder). Shows whether message passing helps.
   3. GNN on drug–drug edges only (no proteins). Shows whether biology helps.
   4. Full graph; report separately for the 284 drugs with targets vs. the 361 without.
-- **6.6 Calibration (required for burden):** measure with reliability diagrams / ECE; fix on validation data with temperature scaling, Platt scaling or isotonic regression. Burden multiplies probabilities by prevalence, so probabilities must be meaningful, not just correct rankings. Negative subsampling at rate β can be corrected with p = β·p_s / (β·p_s − p_s + 1) (Dal Pozzolo et al. 2015); PU bias is not fixed by this.
+- **6.6 Calibration (required for burden):** measure with reliability diagrams / ECE; fix on validation data with temperature scaling, Platt scaling or isotonic regression. Burden multiplies probabilities by prevalence, so probabilities must be meaningful, not just correct rankings. Full-row training (#7) needs no subsampling correction; runs that use the uniform-sampling fallback at rate β are corrected with p = β·p_s / (β·p_s − p_s + 1) (Dal Pozzolo et al. 2015). PU bias is not fixed by either: `p` estimates the reported probability.
 - **6.7 N-drug aggregation:** per side effect over all pairs of a drug set, max or noisy-OR: P = 1 − ∏(1 − p_ij). Noisy-OR assumes independent, calibrated pairs; pairs sharing a drug are correlated and count that drug's own tendency repeatedly. Report both, and remember which pair drives each risk.
 
 ---
