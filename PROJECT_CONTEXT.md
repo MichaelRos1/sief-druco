@@ -116,6 +116,14 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
   4. **Two failure reasons, kept apart:** *not in the model* (reached an ingredient outside the 645; reported only) and *mapping failed* (never reached an ingredient, or the Decagon drug never reached RxNorm; fixed where possible).
   Cache every lookup to disk; log failures with their reason.
 - **4.3 Coverage must be reported:** the share of participants, drugs and co-prescribed pairs that map to Decagon's 645 drugs. Drugs outside Decagon cannot be scored by a transductive model.
+- **4.4 Pooled cycles (decided on #15):** main pool = NHANES 2015–2016 + 2017–March 2020 pre-pandemic file (`P_`), 5.2 years, ~10,900 Rx users, middle year ~2017.
+  - **Never** 2017–2018 next to `P_` (`P_` contains those participants under new `SEQN`s, so a double count can't be caught by ID). 1999–2002 and 2021–2023 (no drug names) are out.
+  - **Weights:** interview weights only, `WTINT2YR × 2/5.2` and `WTINTPRP × 3.2/5.2`. Prevalence is a weighted **share** of the population, not a sum of weights.
+  - **Variance:** Taylor linearization on stacked `SDMVSTRA` / `SDMVPSU` (strata 119–133 and 149–172, no single-PSU stratum). The minimum-count rule for ranking a pair is set in #18.
+  - **Population:** all ages stay in the pool; age bands are survey domains. The headline population is set in #18.
+  - **Order of work:** the pipeline takes a list of cycles; develop on 2017–2018 (already mapped, #16), then switch to the main pool.
+  - **Reporting:** pooled estimate is the result; top pairs also get separate 2015–16 and `P_` shares (supplement).
+  - **Robustness:** FAERS-era pool 2005–2008 (#22, see `8.2`); MEPS 2015–2019 without 2020 (#23).
 
 ---
 
@@ -229,7 +237,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 - **Coverage:** drugs outside Decagon's 645 cannot be scored by a transductive model; coverage is reported, not hidden.
 - **Labels:** the model learns "over-reported together in FAERS", not causation (`3.4.1`).
 - **Exposure:** co-listing in a survey means co-medication, not that a side effect occurred; burden is predicted, not observed.
-- **Time gap:** Decagon reflects older FAERS data; survey cycles may reflect newer prescribing.
+- **Time gap:** Decagon's labels come from FAERS reports filed Q1 2004 – Q1 2009 (TWOSIDES); the main NHANES pool centres on ~2017 (`4.4`). The gap mostly shows as lower coverage (newer drugs are outside the 645). Measured by re-running on a FAERS-era pool, NHANES 2005–2008, and reporting coverage and top-50 burden overlap with the main pool (#22).
 - **No causal claims:** results are prioritised hypotheses.
 
 ---
@@ -246,7 +254,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 
 ## 10. Open items
 
-- **10.1** Which NHANES cycles to pool.
+- **10.1** ~~Which NHANES cycles to pool.~~ Decided on #15, see `4.4`.
 - **10.2** Whether to add severity weights to the burden score (e.g. Gottlieb et al. 2015 crowdsourced severity rankings).
 - **10.3** Final encoder: decided by the comparison in `5.3` / `6.5`.
 - **10.4** Literature check: prior work combining co-prescription or prescription-survey data with predicted DDI risk.
