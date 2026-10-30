@@ -176,7 +176,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 ### 5.4 Decoder
 - Default: Decagon's decoder `z_aᵀ · D_r · R · D_r · z_b + b_r`, D_r diagonal per side effect ([963, d]), R shared [d, d], constrained symmetric so f(a, b) = f(b, a). Computed as one matmul, `((z_a ⊗ z_b) ⊙ R).flatten() @ (D ⊗ D)ᵀ` (8× faster on MPS, #8).
 - Alternatives: DistMult (always symmetric), multi-label MLP on `[z_a + z_b, z_a ⊙ z_b]` → 963 logits. Chosen in Stage A of the comparison (#8).
-- **Per-side-effect bias `b_r`** on every decoder, started at side effect r's training base rate. Deviation from Decagon (no bias): with full rows ~98.6% of labels are 0, and without it the untrained model predicts 0.5 everywhere.
+- **Per-side-effect bias `b_r`** on every decoder, started at side effect r's training base rate. Deviation from Decagon (no bias): with full rows ~97.7% of labels are 0, and without it the untrained model predicts 0.5 everywhere.
 - Start values: D_r ~ N(0, 1), R ~ N(0, 1/√d). Smaller start values give near-zero gradients through the four-factor product (#8 pilot).
 - Must stay a separate module taking only (z_a, z_b, r), so the N-drug aggregator reuses it unchanged.
 
