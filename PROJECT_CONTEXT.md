@@ -143,7 +143,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
  5. TRAINING     BCE on positives + degree-matched negatives
  6. EVALUATION   AUROC / AUPRC / AP@50 per side effect, pair- and drug-level splits
        ▼
- 7. INFERENCE    precompute z → score pairs → calibrate → aggregate → burden (`7`)
+ 7. INFERENCE    cross-fitted scores (10 folds, U and S regimes) → Platt per side effect → burden (`7`)
 ```
 
 ### 5.1 Data layer
@@ -201,7 +201,11 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
   2. Tensor factorisation: free per-drug vectors + the chosen decoder (random and pair-level; not applicable on cold-drug). Shows whether drug features beat drug IDs. Whether message passing helps is shown by encoder "none" (`5.3`).
   3. The best GNN from Stage B on drug–drug edges only (no proteins). Shows whether biology helps.
   4. Full graph; report separately for the 284 drugs with targets vs. the 361 without.
-- **6.6 Calibration (required for burden):** measure with reliability diagrams / ECE; fix on validation data with temperature scaling, Platt scaling or isotonic regression. Burden multiplies probabilities by prevalence, so probabilities must be meaningful, not just correct rankings. Full-row training (#7) needs no subsampling correction; runs that use the uniform-sampling fallback at rate β are corrected with p = β·p_s / (β·p_s − p_s + 1) (Dal Pozzolo et al. 2015). PU bias is not fixed by either: `p` estimates the reported probability.
+- **6.6 Calibration (required for burden, decided in #9):** burden multiplies probabilities by prevalence, so probabilities must be meaningful, not just correct rankings. `p` estimates P(pair reported with r in TWOSIDES); PU bias is not corrected.
+  1. **Burden scores are cross-fitted**, so no pair is scored by a model that trained on it: **U regime** (pair-level, 10 folds of pairs) for unlabelled pairs; **S regime** (random split, 10 folds of triples) for every triple of labelled pairs. One seed per fold model; ~5–7 h for the selected model.
+  2. **Platt scaling per side effect**, `p = σ(a_r · logit + c_r)`, fitted per fold model and regime on that run's early-stopping validation slice; plain PyTorch, all 963 side effects at once. Not temperature (can't fix one side effect's offset), not isotonic (~40 validation positives for the rarest side effects).
+  3. **Reported for the selected model only**, per regime on the held-out folds: reliability diagrams (pooled; rare / median / common side effects), ECE with 15 equal-count bins, predicted vs observed positives per side effect.
+  4. Full-row training (#7, #8) needs no subsampling correction; runs that use the uniform-sampling fallback at rate β would be corrected with p = β·p_s / (β·p_s − p_s + 1) (Dal Pozzolo et al. 2015) before Platt.
 - **6.7 N-drug aggregation:** per side effect over all pairs of a drug set, max or noisy-OR: P = 1 − ∏(1 − p_ij). Noisy-OR assumes independent, calibrated pairs; pairs sharing a drug are correlated and count that drug's own tendency repeatedly. Report both, and remember which pair drives each risk.
 
 ---
