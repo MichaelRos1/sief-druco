@@ -22,7 +22,7 @@
 - **1.1 Main question:** Which drug combinations that are commonly taken together in the population carry the highest predicted polypharmacy side-effect burden, and how much of that burden is not yet documented?
 - **1.2 RQ1 (model):** How well does a graph neural network trained on Decagon predict polypharmacy side effects under pair-level and drug-level splits, compared with simple baselines (additive per-drug model, tensor factorisation)?
 - **1.3 RQ2 (exposure):** Which drug pairs and sets are taken together in the population, how often, and what share of real co-medication is covered by Decagon's 645 drugs?
-- **1.4 RQ3 (burden):** When predicted risk is weighted by co-prescription prevalence, which pairs and which side effects account for most of the burden? How many top-burden pairs are absent from known interaction sources (Decagon labels, DrugBank)?
+- **1.4 RQ3 (burden):** When predicted risk is weighted by co-prescription prevalence, which pairs and which side effects account for most of the burden? How many top-burden pairs are neither known to Decagon (its labels) nor clinically documented (DDInter graded levels, DrugBank hand check)? Defined in `7` step 7 (#19).
 - **1.5 RQ4 (patient groups):** How is predicted burden distributed across patient groups (age, number of concurrent drugs)?
 - **1.6 Motivation:** Existing work (Decagon, `10.1`) asks "is this pair risky?" on a fixed benchmark and ignores which pairs people actually take. A risky pair that is almost never co-prescribed matters less for public health than a moderately risky pair taken by millions. Risk × prevalence gives a prioritised list for pharmacovigilance and prescribers.
 
@@ -219,11 +219,18 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
    ```
    Rank pairs and side effects by burden. → RQ3
 6. **Patient-level risk:** per participant, aggregate over all their pairs (`6.7`); summarise by age group and number of drugs using survey weights. → RQ4
-7. **Novelty check:** for top-burden pairs, check whether the interaction is already documented (Decagon training labels, DrugBank).
+7. **Novelty check (decided on #19):** every covered pair and pair × side effect gets two labels, never merged:
+   - **Known to Decagon:** pair = has any label in the 963-side-effect table the burden model is trained on; triple = that triple is a label.
+   - **Clinically documented:** pair = DDInter 1.0 (all 14 CSVs, de-duplicated, highest level kept, joined by name → RxNorm IN) lists it as Major, Moderate or Minor. "Unknown" (description incomplete) counts as not documented; its share goes in a footnote. Triples inherit the pair's status, marked "pair-level only"; no source documents a specific side effect.
+   - Each source gives documented / not documented / **not checkable** (a drug is not in the source).
+   - Top-burden items are reported in the 2×2 table; **novelty candidates** = not known to Decagon and not clinically documented. Shares in the top-k (cut-offs from #18) are read against the base rate over all covered pairs.
+   - **DrugBank hand check:** the top ~20 novelty candidates are looked up by hand in DrugBank's interaction checker (listed yes/no + severity, no text copied, cited as DrugBank 6.0), once, at the end.
+   - Not used: TWOSIDES / nSIDES (FAERS-derived, circular); CRESCENDDI (cut: documents 4.2% of covered pair weight and is not a complete list).
+   - NHANES 2017–18, covered pair weight: DDInter can check 99.5%; graded-documented 31.9% (in Decagon) and 1.0% (not in Decagon); "Unknown" 60.3%; novelty pool (in neither) 3.4%.
 
 ### 7.1 Validation of the burden ranking
 - **Sanity check:** well-known risky, common combinations (e.g. anticoagulant + antiplatelet → bleeding) should rank high.
-- **External evidence** for undocumented top pairs: DrugBank; optionally FAERS reports filed after the Decagon snapshot (prospective check).
+- **External evidence** for undocumented top pairs: the DrugBank hand check (`7` step 7). The prospective FAERS / nSIDES check was cut on #19 (still FAERS, licence unclear, little value).
 - **Robustness:** repeat with MEPS instead of NHANES, and with max instead of noisy-OR; report how stable the top of the ranking is.
 
 ---
