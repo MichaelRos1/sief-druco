@@ -38,7 +38,7 @@
 | **2.4** | Research direction | Real-world co-prescription burden (`1`), not a pure reproduction of Decagon. |
 | **2.5** | Co-prescription source | NHANES (primary), MEPS (robustness check), MIMIC-IV (optional extension). See `4`. |
 | **2.6** | Architecture style | Modular: data → input layer → encoder → decoder → training → evaluation → inference. Modules talk only through fixed interfaces so the encoder can be swapped and the N-drug aggregator added without touching the rest (`5`). |
-| **2.7** | Encoder strategy | RGCN is the **reference** encoder (it is what Decagon used), not assumed to be best. It is compared against tensor factorisation (no message passing) and one cheaper / attention-based alternative (`5.3`). Answers RQ1. |
+| **2.7** | Encoder strategy | RGCN is the **reference** encoder (it is what Decagon used), not assumed to be best. It is compared against no encoder (mono input only), collapsed GraphSAGE and collapsed GAT, plus tensor factorisation and per-drug additive baselines (`5.3`, `6.5`). Comparison procedure: #8. Answers RQ1. |
 
 ---
 
@@ -162,40 +162,44 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 
 | Encoder | How it works | Why compare it |
 |---|---|---|
-| **None (tensor factorisation)** | Learned drug vectors + decoder, no message passing | Fast, strong; Malone et al. 2018 reported beating Decagon this way. Tests whether the graph helps at all. |
+| **None (no encoder)** | Mono input → `Linear` → decoder, no message passing | Same input as the GNNs, so it tests whether message passing helps at all. Tensor factorisation (free per-drug vectors, Malone et al. 2018) is a separate baseline (`6.5.2`). |
 | **RGCN** (reference) | One weight matrix per edge type, built from ~30 shared bases (basis decomposition) | What Decagon used; comparable to published numbers |
 | **Collapsed drug–drug edges + GraphSAGE / GAT** (`to_hetero`) | One drug–drug edge type for message passing; GAT adds attention over neighbours | Much cheaper; attention may help on the dense drug graph |
-| **HGT** (optional) | Attention with type-specific projections | Learns which relations and neighbours matter |
-| **TIP-style staged propagation** (optional) | Protein → protein, then protein → drug, then drug → drug | Reported to beat Decagon in accuracy and speed (Xu et al. 2019) |
+| ~~**HGT**~~ (future work, #24) | Attention with type-specific projections | Learns which relations and neighbours matter |
+| ~~**TIP-style staged propagation**~~ (future work, #24) | Protein → protein, then protein → drug, then drug → drug | Reported to beat Decagon in accuracy and speed (Xu et al. 2019) |
 
 - Known RGCN weaknesses here: equal weighting of neighbours, oversmoothing on the dense drug graph (`3.3.2`), high cost (millions of typed messages per layer).
-- Typical setup: 2 layers, ReLU, dropout, degree normalisation.
+- RGCN uses the dense drug–drug rewrite (30 shared bases), not `RGCNConv`: 11× faster per epoch, half the memory (#8 timing).
+- Setup: 2 layers (fixed), ReLU, dropout and d tuned (`6.4`), degree normalisation.
 - Output: z_drug [645, d]. Protein vectors are intermediate.
 
 ### 5.4 Decoder
-- Default: Decagon's decoder `z_aᵀ · D_r · R · D_r · z_b`, D_r diagonal per side effect ([964, d]), R shared [d, d], constrained symmetric so f(a, b) = f(b, a).
-- Alternatives: DistMult (always symmetric), multi-label MLP on `[z_a + z_b, z_a ⊙ z_b]` → 964 logits.
+- Default: Decagon's decoder `z_aᵀ · D_r · R · D_r · z_b + b_r`, D_r diagonal per side effect ([963, d]), R shared [d, d], constrained symmetric so f(a, b) = f(b, a). Computed as one matmul, `((z_a ⊗ z_b) ⊙ R).flatten() @ (D ⊗ D)ᵀ` (8× faster on MPS, #8).
+- Alternatives: DistMult (always symmetric), multi-label MLP on `[z_a + z_b, z_a ⊙ z_b]` → 963 logits. Chosen in Stage A of the comparison (#8).
+- **Per-side-effect bias `b_r`** on every decoder, started at side effect r's training base rate. Deviation from Decagon (no bias): with full rows ~98.6% of labels are 0, and without it the untrained model predicts 0.5 everywhere.
+- Start values: D_r ~ N(0, 1), R ~ N(0, 1/√d). Smaller start values give near-zero gradients through the four-factor product (#8 pilot).
 - Must stay a separate module taking only (z_a, z_b, r), so the N-drug aggregator reuses it unchanged.
 
 ### 5.5 Training
 1. Encoder forward on the full graph → z for all drugs.
 2. Supervision pairs, each with its **full row** of 963 labels (decided in #7). Every unlabelled triple is a plain 0, with no positive-unlabeled correction, so the model estimates P(pair reported with r).
 3. Negatives: none sampled by default; the full rows hold every zero. Switchable fallback: zeros drawn uniformly per side effect at one rate β, independent of the positives. Decagon's degree-proportional corruption is not used: it can never draw 29% of the zeros and distorts each pair differently.
-4. Decoder → logits; plain `BCEWithLogitsLoss` (no `pos_weight`, no focal), optionally weighted per side effect (#8).
-5. Backpropagate; Adam; early stopping on validation AUPRC.
+4. Decoder → logits; plain `BCEWithLogitsLoss` (no `pos_weight`, no focal), per-side-effect weights {none, `1/√n_pos(r)`} chosen once in Stage A and fixed for all models (#8).
+5. Backpropagate; full-batch Adam; early stopping on validation macro AUPRC (patience 30, cap 500 epochs), test score at the best epoch.
 
 ---
 
 ## 6. Evaluation
 
 - **6.1 Splits:** pair-level (main for the paper-style comparison) and drug-level / cold-drug (does the model generalise to drugs never seen in a pair). The Decagon paper used a random split by triple, which is optimistic because a pair's other side effects are in training.
-- **6.2 Metrics:** AUROC, AUPRC, AP@50 per side effect, macro-averaged over 964 (Decagon reported AUROC 0.872, AUPRC 0.832, AP@50 0.803 on its random split). Also micro averages. AUPRC must be read against each side effect's prevalence.
-- **6.3 Statistics:** k-fold over pairs/drugs and several seeds; report mean ± spread. Pairs sharing a drug are not independent, so resample by drug.
-- **6.4 Hyperparameters:** tune on a validation split of the same type as the test split.
+- **6.2 Metrics:** AUROC, AUPRC, AP@50 per side effect, macro-averaged over 963 (Decagon reported AUROC 0.872, AUPRC 0.832, AP@50 0.803 on its random split, over 964). Also micro averages. AUPRC must be read against each side effect's prevalence. **Model selection uses macro AUPRC over the full validation rows of the pair-level split** (#8, ADR 0001); the other metrics are reported only.
+- **6.3 Statistics:** 3 folds × 3 seeds over pairs/drugs, the same for every model (ADR 0001, #8); report mean ± spread. Pairs sharing a drug are not independent, so resample by drug.
+- **6.4 Hyperparameters:** tune each encoder once, on pair-level fold 0 with one seed: learning rate {3e-3, 1e-2} × d {32, 64, 128} × dropout {0, 0.3}, 2 layers fixed; reuse the winning settings on the random and cold-drug splits (#8). Limitation: cold-drug may prefer more regularisation than pair-level picks.
+- **6.4.1 Run order (#8):** Stage A picks the decoder and loss weights on pair-level (no encoder + RGCN, 1 fold × 3 seeds, default settings); then tuning; then Stage B compares all encoders and baselines on all three splits; then the no-protein ablation. ≈ 50 h of MacBook compute at an estimated ~300 epochs per run; Stage A measures the real count.
 - **6.5 Baselines and ablations:**
-  1. Per-drug additive model: σ(u_r(a) + u_r(b)), from single-drug features only. Shows how much is per-drug tendency.
-  2. Tensor factorisation (no encoder). Shows whether message passing helps.
-  3. GNN on drug–drug edges only (no proteins). Shows whether biology helps.
+  1. Per-drug additive model: σ(u_r(a) + u_r(b)). Two versions: a free per-drug table (random and pair-level) and from the mono input (all splits). Shows how much is per-drug tendency.
+  2. Tensor factorisation: free per-drug vectors + the chosen decoder (random and pair-level; not applicable on cold-drug). Shows whether drug features beat drug IDs. Whether message passing helps is shown by encoder "none" (`5.3`).
+  3. The best GNN from Stage B on drug–drug edges only (no proteins). Shows whether biology helps.
   4. Full graph; report separately for the 284 drugs with targets vs. the 361 without.
 - **6.6 Calibration (required for burden):** measure with reliability diagrams / ECE; fix on validation data with temperature scaling, Platt scaling or isotonic regression. Burden multiplies probabilities by prevalence, so probabilities must be meaningful, not just correct rankings. Full-row training (#7) needs no subsampling correction; runs that use the uniform-sampling fallback at rate β are corrected with p = β·p_s / (β·p_s − p_s + 1) (Dal Pozzolo et al. 2015). PU bias is not fixed by either: `p` estimates the reported probability.
 - **6.7 N-drug aggregation:** per side effect over all pairs of a drug set, max or noisy-OR: P = 1 − ∏(1 − p_ij). Noisy-OR assumes independent, calibrated pairs; pairs sharing a drug are correlated and count that drug's own tendency repeatedly. Report both, and remember which pair drives each risk.
@@ -256,7 +260,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 
 - **10.1** ~~Which NHANES cycles to pool.~~ Decided on #15, see `4.4`.
 - **10.2** Whether to add severity weights to the burden score (e.g. Gottlieb et al. 2015 crowdsourced severity rankings).
-- **10.3** Final encoder: decided by the comparison in `5.3` / `6.5`.
+- **10.3** Final encoder: decided by the comparison procedure locked in #8 (`5.3`, `6.4`, `6.5`).
 - **10.4** Literature check: prior work combining co-prescription or prescription-survey data with predicted DDI risk.
 - **10.5** Optional extension for coverage: embed drugs outside Decagon inductively (from single-drug side-effect profiles, known targets, or molecular structure via SMILES → molecular GNN, fused with the graph embedding).
 
