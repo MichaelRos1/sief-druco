@@ -36,7 +36,7 @@
 | **2.2** | Graph view | Nodes = drugs, proteins. Edges = protein–protein, drug–protein targets, drug–drug (one edge type per side effect). Single-drug side effects = drug node features. See `3.2`. |
 | **2.3** | Pairs vs. sets | Build and evaluate the model on **pairs** first. Extend to N drugs by **pairwise aggregation** (max / noisy-OR, `6.7`). True higher-order (3+ drug) models are out of scope: Decagon has no 3+ drug data. |
 | **2.4** | Research direction | Real-world co-prescription burden (`1`), not a pure reproduction of Decagon. |
-| **2.5** | Co-prescription source | NHANES (primary), MEPS (robustness check), MIMIC-IV (optional extension). See `4`. |
+| **2.5** | Co-prescription source | NHANES (primary), MEPS 2015–2017 (light robustness check, #27), MIMIC-IV (optional extension). See `4`. |
 | **2.6** | Architecture style | Modular: data → input layer → encoder → decoder → training → evaluation → inference. Modules talk only through fixed interfaces so the encoder can be swapped and the N-drug aggregator added without touching the rest (`5`). |
 | **2.7** | Encoder strategy | RGCN is the **reference** encoder (it is what Decagon used), not assumed to be best. It is compared against no encoder (mono input only), collapsed GraphSAGE and collapsed GAT, plus tensor factorisation and per-drug additive baselines (`5.3`, `6.5`). Comparison procedure: #8. Answers RQ1. |
 
@@ -104,7 +104,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 | Source | Role | Access |
 |---|---|---|
 | **NHANES Prescription Medications** (primary) | Per participant: all prescription drugs taken in the past 30 days, with demographics and survey weights | Public, no registration |
-| MEPS Prescribed Medicines | Robustness check: prescribed medicines purchased during a year, with survey weights | Public |
+| MEPS Prescribed Medicines | Robustness check (2015–2017, #27): prescribed medicines purchased per round (~4 months), with survey weights | Public |
 | MIMIC-IV prescriptions | Optional extension: hospital inpatient co-medication | Credentialed via PhysioNet |
 | DrugBank interactions | Reference for "already documented" pairs (RQ3) | Free for academic use |
 
@@ -128,7 +128,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
   - **Population:** all ages stay in the pool; age bands are survey domains. The headline population is **all ages** (#18); shares are of the whole pooled population, non-users included, written per 100,000 people.
   - **Order of work:** the pipeline takes a list of cycles; develop on 2017–2018 (already mapped, #16), then switch to the main pool.
   - **Reporting:** pooled estimate is the result; top pairs also get separate 2015–16 and `P_` shares (supplement).
-  - **Robustness:** FAERS-era pool 2005–2008 (#22, see `8.2`); MEPS 2015–2019 without 2020 (#23).
+  - **Robustness:** FAERS-era pool 2005–2008 (#22, see `8.2`); MEPS 2015–2017 (light version, `7.1`, #27; facts #23).
 
 ---
 
@@ -248,9 +248,15 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
    - NHANES 2017–18, covered pair weight: DDInter can check 99.5%; graded-documented 31.9% (in Decagon) and 1.0% (not in Decagon); "Unknown" 60.3%; novelty pool (in neither) 3.4%.
 
 ### 7.1 Validation of the burden ranking
-- **Sanity check:** well-known risky, common combinations (e.g. anticoagulant + antiplatelet → bleeding) should rank high.
+Decided on #27. Positive controls test the model; re-runs on other exposure data test the exposure measure.
+- **Positive controls:** AGS 2023 Beers Criteria Table 5 (drug–drug interactions to avoid in older adults), fixed before results are seen. "≥ 3 CNS-active drugs" is a drug set (out of scope); "anticholinergic + anticholinergic" is expanded from Beers Table 7. Classes are expanded into drugs in the 645 and outcomes mapped to Decagon side effects by name, both written down before any score is looked up.
+  - **Model view:** percentile of `p_r(a, b)` among covered pairs' scores for r; **recovered** = top 10% for at least one mapped side effect. **Burden view:** the pair's overall rank and whether it reaches the top 50 (≥ 30 participants only).
+  - Report "k of n recovered", each control's percentile and rank; controls labelled in Decagon marked (S-regime scores partly expected); controls with no matching side effect listed as not checkable. No overall pass/fail.
+  - NHANES 2017–18: Beers pairs are uncommon one pair at a time; only opioid + gabapentinoid reaches ≥ 10 participants (gabapentin + tramadol 17, gabapentin + oxycodone 14), so the burden view covers about 2 pairs. Phansalkar et al. 2012 was rejected: its 15 interactions are "contraindicated for concurrent use" (10 person-pairs in total).
 - **External evidence** for undocumented top pairs: the DrugBank hand check (`7` step 7). The prospective FAERS / nSIDES check was cut on #19 (still FAERS, licence unclear, little value).
-- **Robustness:** repeat with MEPS instead of NHANES, and with max instead of noisy-OR; report how stable the top of the ranking is.
+- **Re-runs:** the FAERS-era pool (#22), the separate 2015–16 and `P_` shares (`4.4`) and MEPS. Each is compared by **overlap of the top 50 pairs**, with the pairs that drop out named; pairs only, no pass/fail threshold, no rank correlations.
+- **MEPS (light):** 2015–2017 (before the spring 2018 redesign; ~43,000 person-years with ≥ 2 ingredients). A pair counts if both drugs are bought **in the same round** (~4 months), once per person-year; weights `PERWT*F / 3`; point estimates only (no HC-036, no BRR); mapping by `RXDRGNAM` under `4.2`'s rules. Footnote: the 2015–17 weight-count mismatch (#23).
+- "Max instead of noisy-OR" was dropped: RQ4 is pair-level (#25); aggregation is drug-set work (#21).
 
 ---
 
