@@ -2,7 +2,7 @@
 
 Research for issue #16 (map #1), points `4.2`–`4.3` of `PROJECT_CONTEXT.md`. Run on 2026-10-29 on NHANES 2017–2018 (cycle J). It uses the reverse route decided on #12 (`research/nhanes-stitch-mapping.md`). It records numbers and decides nothing.
 
-**Status: done for #16.** Every number below was computed. The name-check hits and the two RxNorm questions were checked by hand on 2026-10-29 (section 7.1). Two hand checks are left: the 34 unmatched Decagon drugs and the 17 Decagon drugs that reached more than one ingredient. They belong to the map's open item "Handling failed drug-name mappings", which decides how far hand fixes go. Section 7 bounds how much they could move the numbers. The numbers in this note are **not** reclassified after the hand checks.
+**Status: done for #16.** Every number below was computed. The name-check hits and the two RxNorm questions were checked by hand on 2026-10-29 (section 7.1). Two hand checks are left: the 34 unmatched Decagon drugs and the 17 Decagon drugs that reached more than one ingredient. They belong to "Handling failed drug-name mappings" (#26, decided 2026-10-31: Decagon-side hand fixes only, by an alias rule, done when the mapping pipeline is built). Section 7 bounds how much they could move the numbers. The numbers in this note are **not** reclassified after the hand checks.
 
 Markers: **[verified: source]** = read from a primary source or a live API call; **[derived]** = computed here from the files and API responses; **[unverified]** = not checked.
 
@@ -244,7 +244,7 @@ Script: `local/data/scratch/coverage-pilot/handcheck/check.py`. Same connectivit
 | risedronate | 3 | 5245 | Same (acid vs anion) | SIDER name "risedronate". RxNorm keeps `IN` 73056 `risedronate` and `IN` 55685 `risedronic acid` as two separate active concepts; neither is remapped to the other. |
 
 - **Effect if the 8 "same / likely same" rows were joined:** 40 mentions (0.26% of 15,560) would move into "in the 645". Rosuvastatin (104 mentions, 1.31% weighted prevalence) stays outside the model. Lactulose (3 mentions) is unresolved. [derived]
-- These are facts. Whether to join them (and by which rule: same connectivity, prodrug to active moiety, acid to salt) is for the map's open item "Handling failed drug-name mappings".
+- These are facts. Whether to join them (and by which rule: same connectivity, prodrug to active moiety, acid to salt) is for the map's open item "Handling failed drug-name mappings". **Decided on #26:** join acid / salt, prodrug ester ↔ active drug and racemate ↔ enantiomer; never epimers or diastereomers sold as separate drugs.
 
 ## 8. Most prevalent unmapped drugs (top 30)
 
@@ -302,8 +302,8 @@ Weighted prevalence is the share of the weighted population (all 9,254 participa
 
 | What | Status |
 |---|---|
-| Hand check of the 34 unmatched Decagon drugs (28 with a rejected `approximateTerm` candidate, listed in section 4) | **not done**. Moved to the map's open item "Handling failed drug-name mappings". |
-| Hand check of the 17 Decagon drugs with more than one `IN` | **not done**. All `IN`s are kept in the numbers; effect bounded at 231 mentions (section 7). Moved to the same map item. |
+| Hand check of the 34 unmatched Decagon drugs (28 with a rejected `approximateTerm` candidate, listed in section 4) | **not done**. Rules set on #26 (Decagon-side override file, half-day time box); done when the mapping pipeline is built. |
+| Hand check of the 17 Decagon drugs with more than one `IN` | **not done**. All `IN`s are kept in the numbers; effect bounded at 231 mentions (section 7). Same as above: #26 alias rule. |
 | Hand check of the loose name-check hits | **done** (section 7.1): 7 same or likely the same, rosuvastatin not the same, lactulose unclear. |
 | `tenofovir` vs `tenofovir disoproxil`, `risedronate` vs `risedronic acid` | **done** (section 7.1): the same drug under different RxNorm `IN`s. |
 | Variance / standard errors for the weighted shares (Taylor linearization with `SDMVSTRA` / `SDMVPSU`) | **not computed** (not asked by #16). Only weighted point estimates are given. |

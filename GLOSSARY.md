@@ -27,3 +27,11 @@ _Avoid_: Risk, harm, incidence
 **Novelty candidate**:
 A drug pair, or pair × side effect, that is neither known to Decagon nor clinically documented; a hypothesis, not a finding.
 _Avoid_: New interaction, undiscovered interaction, novel DDI
+
+**Not in the model**:
+A survey drug that reached an RxNorm ingredient outside Decagon's 645 drugs; the model can't score it, and that is reported, not fixed.
+_Avoid_: Unmapped, missing drug
+
+**Mapping failed**:
+A survey drug that never reached an RxNorm ingredient, or a Decagon drug that never reached RxNorm; a gap in the name matching, not in the model.
+_Avoid_: Unmapped, not in Decagon
