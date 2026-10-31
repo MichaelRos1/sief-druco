@@ -10,8 +10,13 @@ Choices that depend on experiment results (the final encoder, the decoder, hyper
 
 - **Output:** for a drug pair `(a, b)`, 963 probabilities `p_r(a, b)`, one per side effect r. Symmetric: `p_r(a, b) = p_r(b, a)`.
 - **Meaning:** `p_r(a, b)` estimates **P(pair reported with side effect r in TWOSIDES)**, not P(pair causes r). Unlabelled triples are treated as plain zeros, with no positive-unlabeled correction; reporting bias is a stated limitation (#7).
-- **Hand-off to the burden track:** cross-fitted, Platt-calibrated scores for all 207,690 pairs × 963 side effects (`9`). The exact interface (format, IDs, metadata) is settled in #17.
-- **Interfaces kept ready for drug sets (#21):** the decoder takes only `(z_a, z_b, r)`; the model exposes `score(pairs) → [n, 963]` calibrated probabilities.
+- **Hand-off to the burden track (#17):** a precomputed table of cross-fitted, Platt-calibrated scores for all 207,690 pairs × 963 side effects (`9`), keyed by Decagon's IDs (STITCH, UMLS CUI), in the git-ignored `local/` folder:
+  - `scores.npy`: float32 `[207690, 963]`, calibrated `p_r(a, b)` (~800 MB).
+  - `pairs.csv`: `pair_id` (row), `stitch_a`, `stitch_b` (unordered), `labelled`, `regime` (U / S).
+  - `side_effects.csv`: `cui` (column), `name`, number of labelled pairs, held-out AUPRC per regime, predicted vs observed positives (`9`, reporting).
+  - `meta.json`: git commit, model setup, folds, seed, date.
+  No live scoring function and no per-score uncertainty. The model never touches NHANES or RxNorm.
+- **Interfaces kept ready for drug sets (#21):** the decoder takes only `(z_a, z_b, r)`; any pair's 963 calibrated probabilities are a lookup in the score table.
 
 ## 2. Data (#4, #5)
 

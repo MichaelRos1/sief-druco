@@ -213,9 +213,9 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 ## 7. Burden analysis pipeline (answers RQ2–RQ4)
 
 1. **Train and evaluate the model** (`5`, `6`). → RQ1
-2. **Calibrate** probabilities (`6.6`).
-3. **Map NHANES drugs** to Decagon IDs (`4.2`); report coverage (`4.3`).
-4. **Extract co-prescriptions:** for each participant, all pairs of mapped drugs. Weighted prevalence of a pair = sum of survey weights of participants taking both. → RQ2
+2. **Calibrate** probabilities (`6.6`) and **hand over the score table (decided on #17):** all 207,690 pairs × 963 side effects, cross-fitted and calibrated, keyed by STITCH ID and UMLS CUI (`scores.npy` float32 [207690, 963]; `pairs.csv` with `labelled` and `regime`; `side_effects.csv` with held-out AUPRC and predicted vs observed positives; `meta.json`). No live scoring function, no per-score uncertainty. Burden and drug sets look pairs up in this table.
+3. **Map NHANES drugs** to Decagon IDs (`4.2`); report coverage (`4.3`). Store two tables (#17): **persons** (`source`, `cycle`, `seqn`, pooled weight, stratum, PSU, age, sex) and **person_drugs** (one row per person × RxNorm ingredient, with `stitch_id` or the reason `not_in_model` / `mapping_failed`). A pair is scorable if both drugs have a `stitch_id`; otherwise it keeps its reason(s), so coverage is reported per reason. Fixed-dose combinations are split into ingredients and count as a co-prescribed pair; the same ingredient twice counts once; a drug paired with itself is dropped.
+4. **Extract co-prescriptions:** for each participant, all pairs of mapped drugs, derived on the fly from **person_drugs** (never stored as counts). Weighted prevalence of a pair = sum of survey weights of participants taking both. → RQ2
 5. **Compute burden:**
    ```
    burden_r(a, b) = prevalence(a, b) × p_r(a, b)                        per side effect r
