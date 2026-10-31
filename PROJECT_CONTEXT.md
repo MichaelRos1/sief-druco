@@ -119,8 +119,9 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 - **4.4 Pooled cycles (decided on #15):** main pool = NHANES 2015–2016 + 2017–March 2020 pre-pandemic file (`P_`), 5.2 years, ~10,900 Rx users, middle year ~2017.
   - **Never** 2017–2018 next to `P_` (`P_` contains those participants under new `SEQN`s, so a double count can't be caught by ID). 1999–2002 and 2021–2023 (no drug names) are out.
   - **Weights:** interview weights only, `WTINT2YR × 2/5.2` and `WTINTPRP × 3.2/5.2`. Prevalence is a weighted **share** of the population, not a sum of weights.
-  - **Variance:** Taylor linearization on stacked `SDMVSTRA` / `SDMVPSU` (strata 119–133 and 149–172, no single-PSU stratum). The minimum-count rule for ranking a pair is set in #18.
-  - **Population:** all ages stay in the pool; age bands are survey domains. The headline population is set in #18.
+  - **Variance:** Taylor linearization on stacked `SDMVSTRA` / `SDMVPSU` (strata 119–133 and 149–172, no single-PSU stratum). Prevalence intervals are Korn–Graubard 95% (#18).
+  - **Minimum count (#18):** a pair and its triples are ranked only if ≥ 30 unweighted participants in the pool take it; the novelty candidate list uses ≥ 10 (`7` step 7). Every covered pair still counts in coverage, base rates and totals; the pipeline reports how many pairs pass 10, 20 and 30.
+  - **Population:** all ages stay in the pool; age bands are survey domains. The headline population is **all ages** (#18); shares are of the whole pooled population, non-users included, written per 100,000 people.
   - **Order of work:** the pipeline takes a list of cycles; develop on 2017–2018 (already mapped, #16), then switch to the main pool.
   - **Reporting:** pooled estimate is the result; top pairs also get separate 2015–16 and `P_` shares (supplement).
   - **Robustness:** FAERS-era pool 2005–2008 (#22, see `8.2`); MEPS 2015–2019 without 2020 (#23).
@@ -215,20 +216,26 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 1. **Train and evaluate the model** (`5`, `6`). → RQ1
 2. **Calibrate** probabilities (`6.6`) and **hand over the score table (decided on #17):** all 207,690 pairs × 963 side effects, cross-fitted and calibrated, keyed by STITCH ID and UMLS CUI (`scores.npy` float32 [207690, 963]; `pairs.csv` with `labelled` and `regime`; `side_effects.csv` with held-out AUPRC and predicted vs observed positives; `meta.json`). No live scoring function, no per-score uncertainty. Burden and drug sets look pairs up in this table.
 3. **Map NHANES drugs** to Decagon IDs (`4.2`); report coverage (`4.3`). Store two tables (#17): **persons** (`source`, `cycle`, `seqn`, pooled weight, stratum, PSU, age, sex) and **person_drugs** (one row per person × RxNorm ingredient, with `stitch_id` or the reason `not_in_model` / `mapping_failed`). A pair is scorable if both drugs have a `stitch_id`; otherwise it keeps its reason(s), so coverage is reported per reason. Fixed-dose combinations are split into ingredients and count as a co-prescribed pair; the same ingredient twice counts once; a drug paired with itself is dropped.
-4. **Extract co-prescriptions:** for each participant, all pairs of mapped drugs, derived on the fly from **person_drugs** (never stored as counts). Weighted prevalence of a pair = sum of survey weights of participants taking both. → RQ2
-5. **Compute burden:**
+4. **Extract co-prescriptions:** for each participant, all pairs of mapped drugs, derived on the fly from **person_drugs** (never stored as counts). Prevalence of a pair = weighted share of the pooled population taking both (sum of their pooled weights ÷ sum of all pooled weights), per 100,000 people (`4.4`). → RQ2
+5. **Compute burden (decided on #18):**
    ```
-   burden_r(a, b) = prevalence(a, b) × p_r(a, b)                        per side effect r
-   burden(a, b)   = Σ_r  prevalence(a, b) × p_r(a, b) [× severity_r]     per pair
+   burden_r(a, b) = prev(a, b) × p_r(a, b)            triple (pair × side effect r)
+   burden(a, b)   = prev(a, b) × Σ_r p_r(a, b)        pair, all 963 side effects
+   burden_r       = Σ_pairs prev(a, b) × p_r(a, b)    side effect, over all covered pairs
    ```
-   Rank pairs and side effects by burden. → RQ3
+   - A pair's burden is the expected number of side-effect signals per person in the population who takes the pair: exposure, not cases. Every side effect weighs the same; no subset, no disease classes; severity weights are #20.
+   - `p` is the cross-fitted, calibrated prediction for **every** triple, including a labelled pair's labelled side effects (S regime); labels never replace predictions, so labelled and unlabelled pairs are on the same footing.
+   - Three rankings: pairs and triples (only pairs with ≥ 30 participants, `4.4`), side effects (all covered pairs). → RQ3
+   - **Uncertainty:** the Korn–Graubard 95% interval on prevalence, carried into burden with `p` held fixed. Model uncertainty only through per-side-effect columns (held-out AUPRC, predicted vs observed positives); no rank intervals.
 6. **Patient-level risk:** per participant, aggregate over all their pairs (`6.7`); summarise by age group and number of drugs using survey weights. → RQ4
 7. **Novelty check (decided on #19):** every covered pair and pair × side effect gets two labels, never merged:
    - **Known to Decagon:** pair = has any label in the 963-side-effect table the burden model is trained on; triple = that triple is a label.
    - **Clinically documented:** pair = DDInter 1.0 (all 14 CSVs, de-duplicated, highest level kept, joined by name → RxNorm IN) lists it as Major, Moderate or Minor. "Unknown" (description incomplete) counts as not documented; its share goes in a footnote. Triples inherit the pair's status, marked "pair-level only"; no source documents a specific side effect.
    - Each source gives documented / not documented / **not checkable** (a drug is not in the source).
-   - Top-burden items are reported in the 2×2 table; **novelty candidates** = not known to Decagon and not clinically documented. Shares in the top-k (cut-offs from #18) are read against the base rate over all covered pairs.
-   - **DrugBank hand check:** the top ~20 novelty candidates are looked up by hand in DrugBank's interaction checker (listed yes/no + severity, no text copied, cited as DrugBank 6.0), once, at the end.
+   - Top-burden items are reported in the 2×2 table; **novelty candidates** = not known to Decagon and not clinically documented. Shares in the **top 50 pairs and top 50 triples** of the ranked set (#18) are read against the base rate over all covered pairs and triples.
+   - **Share of burden (#18):** the headline answer to "how much is undocumented" is the 2×2 as shares of total burden over all covered pairs and triples, with no count floor.
+   - **Novelty candidate list (#18):** candidates with ≥ 10 participants in the pool, ordered by pair burden, those under 30 flagged as imprecise. On NHANES 2017–18 only 3 of 682 candidate pairs reach 10 participants, so the ≥ 30 rule would leave almost none.
+   - **DrugBank hand check:** the top 20 of the novelty candidate list (all of it if shorter) are looked up by hand in DrugBank's interaction checker (listed yes/no + severity, no text copied, cited as DrugBank 6.0), once, at the end.
    - Not used: TWOSIDES / nSIDES (FAERS-derived, circular); CRESCENDDI (cut: documents 4.2% of covered pair weight and is not a complete list).
    - NHANES 2017–18, covered pair weight: DDInter can check 99.5%; graded-documented 31.9% (in Decagon) and 1.0% (not in Decagon); "Unknown" 60.3%; novelty pool (in neither) 3.4%.
 
@@ -252,6 +259,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 - **Coverage:** drugs outside Decagon's 645 cannot be scored by a transductive model; coverage is reported, not hidden.
 - **Labels:** the model learns "over-reported together in FAERS", not causation (`3.4.1`).
 - **Exposure:** co-listing in a survey means co-medication, not that a side effect occurred; burden is predicted, not observed.
+- **Model uncertainty:** each score comes from one fold model with one seed, so burden intervals cover prevalence only; model quality is shown per side effect (held-out AUPRC, calibration), not per score (#17, #18).
 - **Time gap:** Decagon's labels come from FAERS reports filed Q1 2004 – Q1 2009 (TWOSIDES); the main NHANES pool centres on ~2017 (`4.4`). The gap mostly shows as lower coverage (newer drugs are outside the 645). Measured by re-running on a FAERS-era pool, NHANES 2005–2008, and reporting coverage and top-50 burden overlap with the main pool (#22).
 - **No causal claims:** results are prioritised hypotheses.
 
@@ -270,7 +278,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 ## 10. Open items
 
 - **10.1** ~~Which NHANES cycles to pool.~~ Decided on #15, see `4.4`.
-- **10.2** Whether to add severity weights to the burden score (e.g. Gottlieb et al. 2015 crowdsourced severity rankings).
+- **10.2** Whether to add severity weights to the burden score (e.g. Gottlieb et al. 2015 crowdsourced severity rankings). Out of scope; later extension #20. The burden formula (#18) weights every side effect equally.
 - **10.3** Final encoder: decided by the comparison procedure locked in #8 (`5.3`, `6.4`, `6.5`).
 - **10.4** Literature check: prior work combining co-prescription or prescription-survey data with predicted DDI risk.
 - **10.5** Optional extension for coverage: embed drugs outside Decagon inductively (from single-drug side-effect profiles, known targets, or molecular structure via SMILES → molecular GNN, fused with the graph embedding).

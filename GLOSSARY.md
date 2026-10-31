@@ -19,3 +19,11 @@ _Avoid_: Positive pair, interacting pair, known interaction
 **Unlabelled pair**:
 A drug pair with no side effect in the Decagon data; this means "not reported", not "safe".
 _Avoid_: Negative pair, safe pair, non-interacting pair
+
+**Burden**:
+How many people take a drug pair, as a share of the population, times the pair's predicted side-effect signal; it measures exposure to a signal, not cases of harm.
+_Avoid_: Risk, harm, incidence
+
+**Novelty candidate**:
+A drug pair, or pair × side effect, that is neither known to Decagon nor clinically documented; a hypothesis, not a finding.
+_Avoid_: New interaction, undiscovered interaction, novel DDI

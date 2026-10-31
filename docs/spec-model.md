@@ -144,7 +144,7 @@ The **final model** is the Stage B winner on pair-level validation macro AUPRC.
 2. **Platt scaling per side effect:** `p = σ(a_r · logit + c_r)`, fitted per fold model and regime on that run's early-stopping validation slice. Plain PyTorch: all 963 side effects at once, minimising BCE (seconds). Not temperature scaling, not isotonic, not a library.
 3. **Reporting** (final model only, per regime, on the held-out folds): reliability diagrams pooled and for rare / median / common side effects; ECE with 15 equal-count bins; predicted vs observed number of positives per side effect.
 
-Whether the burden uses a labelled side effect's label or its S-regime prediction is decided in #18.
+The burden uses the S-regime prediction for every triple of a labelled pair, labelled side effects included; labels never replace predictions (#18).
 
 ## 10. Deviations from Decagon
 
@@ -161,6 +161,6 @@ Whether the burden uses a labelled side effect's label or its S-regime predictio
 ## 11. Not in this spec
 
 - **Model ↔ burden interface:** #17.
-- **Burden formula, label vs prediction for labelled pairs:** #18.
+- **Burden formula:** #18.
 - **HGT, TIP:** #24. **Drug sets of 3+ drugs:** #21. **Severity weights:** #20.
 - **Drugs outside the 645** (inductive embedding, `PROJECT_CONTEXT.md` `10.5`): out of scope; coverage is reported instead.
