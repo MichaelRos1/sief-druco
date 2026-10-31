@@ -1,6 +1,6 @@
 # Project Context: Polypharmacy Side-Effect Model × Real-World Co-Prescription Burden
 
-> **For the next model reading this:** This file holds everything decided so far. Use it to map out how to build the project. Every point has a stable ID (e.g. `3.2`, `5.4`); the user refers to points by these IDs.
+> **For the next model reading this:** This file holds the background and a summary of what was decided. **Build decisions live in `docs/spec-model.md` and `docs/spec-burden.md`; where this file and a spec differ, the spec wins.** Every point has a stable ID (e.g. `3.2`, `5.4`); the user refers to points by these IDs.
 
 ---
 
@@ -13,7 +13,7 @@
 | **Model data** | Decagon dataset (Stanford SNAP / BioSNAP), see `3`. |
 | **Co-prescription data** | NHANES Prescription Medications (primary), see `4`. |
 | **Core tech** | PyTorch + PyTorch Geometric. |
-| **Status** | Planning stage. No code written yet. |
+| **Status** | Specs complete (`docs/spec-model.md`, `docs/spec-burden.md`, map #1 closed). No code written yet. |
 
 ---
 
@@ -21,7 +21,7 @@
 
 - **1.1 Main question:** Which drug combinations that are commonly taken together in the population carry the highest predicted polypharmacy side-effect burden, and how much of that burden is not yet documented?
 - **1.2 RQ1 (model):** How well does a graph neural network trained on Decagon predict polypharmacy side effects under pair-level and drug-level splits, compared with simple baselines (additive per-drug model, tensor factorisation)?
-- **1.3 RQ2 (exposure):** Which drug pairs and sets are taken together in the population, how often, and what share of real co-medication is covered by Decagon's 645 drugs?
+- **1.3 RQ2 (exposure):** Which drug pairs are taken together in the population, how often, and what share of real co-medication is covered by Decagon's 645 drugs?
 - **1.4 RQ3 (burden):** When predicted risk is weighted by co-prescription prevalence, which pairs and which side effects account for most of the burden? How many top-burden pairs are neither known to Decagon (its labels) nor clinically documented (DDInter graded levels, DrugBank hand check)? Defined in `7` step 7 (#19).
 - **1.5 RQ4 (patient groups):** How is predicted burden distributed across patient groups (age, number of concurrent drugs)? Answered at the pair level, defined in `7` step 6 (#25).
 - **1.6 Motivation:** Existing work (Decagon, `10.1`) asks "is this pair risky?" on a fixed benchmark and ignores which pairs people actually take. A risky pair that is almost never co-prescribed matters less for public health than a moderately risky pair taken by millions. Risk × prevalence gives a prioritised list for pharmacovigilance and prescribers.
@@ -34,9 +34,9 @@
 |---|---|---|
 | **2.1** | Model dataset | Decagon (`3`) |
 | **2.2** | Graph view | Nodes = drugs, proteins. Edges = protein–protein, drug–protein targets, drug–drug (one edge type per side effect). Single-drug side effects = drug node features. See `3.2`. |
-| **2.3** | Pairs vs. sets | Build and evaluate the model on **pairs** first. Extend to N drugs by **pairwise aggregation** (max / noisy-OR, `6.7`). True higher-order (3+ drug) models are out of scope: Decagon has no 3+ drug data. |
+| **2.3** | Pairs vs. sets | Build and evaluate the model on **pairs**. Drug sets of 3+ drugs (pairwise aggregation, max / noisy-OR, `6.7`) are a later, separate effort (#21); every interface stays ready for them. True higher-order (3+ drug) models are out of scope: Decagon has no 3+ drug data. |
 | **2.4** | Research direction | Real-world co-prescription burden (`1`), not a pure reproduction of Decagon. |
-| **2.5** | Co-prescription source | NHANES (primary), MEPS 2015–2017 (light robustness check, #27), MIMIC-IV (optional extension). See `4`. |
+| **2.5** | Co-prescription source | NHANES (primary), MEPS 2015–2017 (light robustness check, #27). MIMIC-IV is out of scope (inpatients, needs PhysioNet credentialing). See `4`. |
 | **2.6** | Architecture style | Modular: data → input layer → encoder → decoder → training → evaluation → inference. Modules talk only through fixed interfaces so the encoder can be swapped and the N-drug aggregator added without touching the rest (`5`). |
 | **2.7** | Encoder strategy | RGCN is the **reference** encoder (it is what Decagon used), not assumed to be best. It is compared against no encoder (mono input only), collapsed GraphSAGE and collapsed GAT, plus tensor factorisation and per-drug additive baselines (`5.3`, `6.5`). Comparison procedure: #8. Answers RQ1. |
 
@@ -86,7 +86,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 ### 3.3 Properties that shape the modelling
 
 - **3.3.1 Side-effect filter:** the Decagon paper kept side effects occurring in at least 500 drug pairs, giving 964 types. The raw combo file has more types, so apply this filter to match the paper.
-- **3.3.2 Dense drug–drug graph:** 63,473 of 207,690 possible pairs (about 31%) are labelled; clustering coefficient 0.81; diameter 3. Two layers of drug–drug message passing already reach almost all drugs, so **oversmoothing** is a real risk.
+- **3.3.2 Dense drug–drug graph:** 63,473 of 207,690 possible pairs (about 31%) are labelled in the raw file, 63,472 after the 963-side-effect filter; clustering coefficient 0.81; diameter 3. Two layers of drug–drug message passing already reach almost all drugs, so **oversmoothing** is a real risk.
 - **3.3.3 Labels per pair:** 73.25 side effects on average (median 53, standard deviation 66). Labels are about 7.6% ones within labelled pairs; rare side effects have few positives.
 - **3.3.4 Target coverage:** 361 of 645 drugs have no target edges in `targets.csv`; they get no biological signal. Check how many the fuller `targets-all.csv` covers before relying on it.
 - **3.3.5 Drug graph is small, protein graph is large:** the full graph fits on one GPU; the cost is in decoding millions of drug–drug triples plus negatives.
@@ -105,7 +105,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
 |---|---|---|
 | **NHANES Prescription Medications** (primary) | Per participant: all prescription drugs taken in the past 30 days, with demographics and survey weights | Public, no registration |
 | MEPS Prescribed Medicines | Robustness check (2015–2017, #27): prescribed medicines purchased per round (~4 months), with survey weights | Public |
-| MIMIC-IV prescriptions | Optional extension: hospital inpatient co-medication | Credentialed via PhysioNet |
+| MIMIC-IV prescriptions | Out of scope (map #1): hospital inpatient co-medication | Credentialed via PhysioNet |
 | DrugBank interactions | Reference for "already documented" pairs (RQ3) | Free for academic use |
 
 - **4.1 Why NHANES first:** it records drugs taken *currently* (past 30 days), so co-listed drugs are very likely taken at the same time. MEPS records purchases over a year, where co-listing does not guarantee concurrent use. Survey weights turn sample counts into US population estimates; several survey cycles can be pooled.
@@ -211,7 +211,7 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
   2. **Platt scaling per side effect**, `p = σ(a_r · logit + c_r)`, fitted per fold model and regime on that run's early-stopping validation slice; plain PyTorch, all 963 side effects at once. Not temperature (can't fix one side effect's offset), not isotonic (~40 validation positives for the rarest side effects).
   3. **Reported for the selected model only**, per regime on the held-out folds: reliability diagrams (pooled; rare / median / common side effects), ECE with 15 equal-count bins, predicted vs observed positives per side effect.
   4. Full-row training (#7, #8) needs no subsampling correction; runs that use the uniform-sampling fallback at rate β would be corrected with p = β·p_s / (β·p_s − p_s + 1) (Dal Pozzolo et al. 2015) before Platt.
-- **6.7 N-drug aggregation:** per side effect over all pairs of a drug set, max or noisy-OR: P = 1 − ∏(1 − p_ij). Noisy-OR assumes independent, calibrated pairs; pairs sharing a drug are correlated and count that drug's own tendency repeatedly. Report both, and remember which pair drives each risk.
+- **6.7 N-drug aggregation** (out of scope here; drug sets, #21): per side effect over all pairs of a drug set, max or noisy-OR: P = 1 − ∏(1 − p_ij). Noisy-OR assumes independent, calibrated pairs; pairs sharing a drug are correlated and count that drug's own tendency repeatedly. Report both, and remember which pair drives each risk.
 
 ---
 
@@ -267,7 +267,7 @@ Decided on #27. Positive controls test the model; re-runs on other exposure data
 2. A measured coverage figure: how much of real co-medication a Decagon-trained model can score.
 3. A list of high-burden combinations not documented in standard interaction sources, as hypotheses for pharmacovigilance.
 4. An honest model comparison on pair-level and drug-level splits, with baselines.
-5. An application: screen a real medication list (`9`).
+5. ~~An application: screen a real medication list (`9`).~~ Out of scope: a pair-only screener adds nothing to RQ1–RQ4; it belongs with drug sets (#21).
 
 ### 8.2 Limitations (state up front)
 - **Coverage:** drugs outside Decagon's 645 cannot be scored by a transductive model; coverage is reported, not hidden.
@@ -280,6 +280,8 @@ Decided on #27. Positive controls test the model; re-runs on other exposure data
 ---
 
 ## 9. Application layer
+
+> Out of scope for this project (map #1): it belongs with the drug-set effort (#21). Kept as background.
 
 - **9.1 Inference:** precompute z_drug once; per request run only the decoder on all N·(N−1)/2 pairs (milliseconds), calibrate, aggregate (`6.7`).
 - **9.2 Backend:** e.g. FastAPI `POST /predict {drugs: [...]}` → top-k side effects with probability and the responsible pair.

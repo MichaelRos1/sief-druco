@@ -12,7 +12,8 @@ Choices that depend on experiment results (the final encoder, the decoder, hyper
 - **Meaning:** `p_r(a, b)` estimates **P(pair reported with side effect r in TWOSIDES)**, not P(pair causes r). Unlabelled triples are treated as plain zeros, with no positive-unlabeled correction; reporting bias is a stated limitation (#7).
 - **Hand-off to the burden track (#17):** a precomputed table of cross-fitted, Platt-calibrated scores for all 207,690 pairs × 963 side effects (`9`), keyed by Decagon's IDs (STITCH, UMLS CUI), in the git-ignored `local/` folder:
   - `scores.npy`: float32 `[207690, 963]`, calibrated `p_r(a, b)` (~800 MB).
-  - `pairs.csv`: `pair_id` (row), `stitch_a`, `stitch_b` (unordered), `labelled`, `regime` (U / S).
+  - `pairs.csv`: `pair_id` (row), `stitch_a`, `stitch_b` (unordered, a < b by index), `labelled`, `regime` (U / S).
+  - `labels.npz`: sparse 0/1 `[207690, 963]` in the same row and column order, the training labels after the 963 filter (~4.6M ones). The burden track needs it for "known to Decagon" per triple (spec audit, map #1).
   - `side_effects.csv`: `cui` (column), `name`, number of labelled pairs, held-out AUPRC per regime, predicted vs observed positives (`9`, reporting).
   - `meta.json`: git commit, model setup, folds, seed, date.
   No live scoring function and no per-score uncertainty. The model never touches NHANES or RxNorm.
@@ -88,7 +89,7 @@ Every metric is also reported separately for pairs among the **284 drugs with ta
 ## 5. Training (#7, #8)
 
 - **Full rows:** every supervision pair enters the loss with all 963 labels. No negatives are sampled.
-- **Loss:** `BCEWithLogitsLoss`, no `pos_weight`, no focal loss. Per-side-effect weights `{none, 1/√n_pos(r)}` (normalised to mean 1), chosen once in Stage A (`8`) and then fixed for every model.
+- **Loss:** `BCEWithLogitsLoss`, no `pos_weight`, no focal loss (focal loss only as an ablation if easy zeros swamp training). Per-side-effect weights `{none, 1/√n_pos(r)}` (normalised to mean 1), chosen once in Stage A (`8`) and then fixed for every model.
 - **Optimiser:** full-batch Adam, one encoder pass and one step per epoch. The decoder runs in chunks of pairs; pass its gradient back exactly through a detached `z` (`z.detach().requires_grad_()`, then `z.backward(z_leaf.grad)`).
 - **Early stopping:** on validation macro AUPRC (`7`), patience 30, cap 500 epochs; keep the best epoch's weights.
 - **Sampling switch** (fallback only): zeros drawn uniformly per side effect at one rate β, redrawn every epoch, corrected with `p = β·p_s / (β·p_s − p_s + 1)` before calibration. Use it only if a model exceeds **12 GB MPS or 10 s per epoch**; none of the compared models does. Within a split, all compared models use the same variant; each run records it. Decagon's degree-based sampler is not used (it can never draw 29% of the zeros).
@@ -99,7 +100,7 @@ Every metric is also reported separately for pairs among the **284 drugs with ta
 
 **Measured cost on the M4** (d = 64, 2 layers, pair-level / random epoch, without validation): none 0.8 / 3.4 s; RGCN dense 1.3 / 4.1 s; SAGE 2.1 / 5.4 s; GAT 2.3 / 5.6 s; ≤ 5.6 GB MPS. About 1 s of the collapsed encoders' time is building the collapsed edge index, which can be precomputed. Validation over full rows adds ~0.3 s.
 
-**MPS notes (#3):** a minimal `torch` + `torch_geometric` install (no extensions) runs everything. Avoid a sorted `EdgeIndex` / `SparseTensor` for GAT (needs `aten::segment_reduce`, no MPS kernel). Avoid `FastRGCNConv` (~51 GB).
+**MPS notes (#3):** a minimal `torch` + `torch_geometric` install (no extensions) runs everything; tested on torch 2.15.0 and PyG 2.8.1. GAT needs torch ≥ 2.6 (MPS kernel for `scatter_reduce_` with `amax`). Avoid a sorted `EdgeIndex` / `SparseTensor` for GAT (needs `aten::segment_reduce`, no MPS kernel). Avoid `FastRGCNConv` (~51 GB).
 
 ## 6. Splits (#6, #7, ADR 0001)
 
@@ -109,7 +110,7 @@ Three splits; every model runs on all three (except where `4.3` says otherwise).
 |---|---|---|
 | **Random per-triple** | co-headline; "seen pair, missing side effect" | Decagon's recipe: per side effect, 5% of its labelled pairs to validation and 5% to test (≥ 50 each). Additionally 5% / 5% of each side effect's **zero** triples (from labelled and unlabelled pairs) go to validation / test and are never trained on. |
 | **Pair-level** | co-headline and **model selection**; "unseen pair" | All 207,690 unordered pairs (labelled and unlabelled together), each with all 963 labels: 80% train / 10% validation / 10% test. |
-| **Cold-drug** | secondary: memorisation check, forecast for new drugs | Drugs at random: 10% test, a separate 10% validation; the 5 drugs with neither a mono profile nor targets always stay in training. Training = pairs of two training drugs. Scored on **one-new-drug pairs** (macro over 963). Two-new-drug pairs are reported only as a pooled micro average. |
+| **Cold-drug** | secondary: memorisation check, forecast for new drugs | Drugs at random: 10% test, a separate 10% validation; the 5 drugs with neither a mono profile nor targets always stay in training. Training = pairs of two training drugs. Scored on **one-new-drug pairs** (macro over 963). Two-new-drug pairs are reported only as a pooled micro average. Validation = pairs of one validation drug and one training drug; pairs of a validation drug with a test drug, or of two validation drugs, are unused (spec audit). |
 
 - **Repeats:** 3 folds × 3 seeds per model and split, the **same folds and seeds for every model**, so comparisons are paired run by run. Folds are never re-drawn; each fold records its smallest number of test positives per side effect.
 
@@ -127,8 +128,8 @@ Three splits; every model runs on all three (except where `4.3` says otherwise).
 
 Run in this order:
 
-1. **Stage A: decoder and loss weights** (~3 h). Decagon vs DistMult vs MLP head, each with encoder None and RGCN, on pair-level, 1 fold × 3 seeds, at default settings (learning rate 1e-2, d = 64, dropout 0). The loss-weight switch `{none, 1/√n_pos}` is tested on None. Pick both by pair-level validation macro AUPRC. **Also record epochs to convergence** and revisit the budget below.
-2. **Tuning** (~10 h). Each encoder with the chosen decoder, once, on pair-level fold 0, one seed: learning rate {3e-3, 1e-2} × d {32, 64, 128} × dropout {0, 0.3}. Layers fixed at 2. The winning settings are reused unchanged on the random and cold-drug splits (limitation: cold-drug may prefer more regularisation).
+1. **Stage A: decoder and loss weights** (~3 h). Decagon vs DistMult vs MLP head, each with encoder None and RGCN, on pair-level, 1 fold × 3 seeds, at default settings (learning rate 1e-2, d = 64, dropout 0). The loss-weight switch `{none, 1/√n_pos}` is tested on encoder None with each of the 3 decoders. Pick both by pair-level validation macro AUPRC. **Also record epochs to convergence** and revisit the budget below.
+2. **Tuning** (~10 h). Each encoder with the chosen decoder, once, on pair-level fold 0, one seed: learning rate {3e-3, 1e-2} × d {32, 64, 128} × dropout {0, 0.3}. Layers fixed at 2. The baselines (tensor factorisation, both additive models) are tuned the same way, once each, over the settings that apply to them (the additive models have no d), so no model wins only by being tuned (spec audit). The winning settings are reused unchanged on the random and cold-drug splits (limitation: cold-drug may prefer more regularisation).
 3. **Stage B: main comparison** (~33 h). The 4 encoders + tensor factorisation + both additive baselines, 3 splits × 3 folds × 3 seeds.
 4. **No-protein ablation** (~7 h). The best GNN from Stage B on drug–drug edges only.
 
@@ -139,10 +140,11 @@ The **final model** is the Stage B winner on pair-level validation macro AUPRC.
 ## 9. Calibration and burden scores (#9)
 
 1. **Cross-fitting:** the final model, with its tuned settings, is retrained so that no pair is scored by a model that trained on it. One seed per fold model; ~5–7 h.
-   - **U regime** (unseen pair) → scores for **unlabelled pairs**: pair-level protocol, all 207,690 pairs in 10 folds. Each run holds out one fold (scored), takes a validation slice from the rest, trains on the remainder.
-   - **S regime** (seen pair, missing side effect) → scores for **every triple of labelled pairs**: random-split protocol, triples in 10 folds. Each run holds out one fold of triples (positives and zeros) plus a validation slice; the pair's other side effects stay in the message graph.
+   - **U regime** (unseen pair) → scores for **unlabelled pairs**: pair-level protocol (with the 70/30 message / supervision redraw), all 207,690 pairs in 10 folds.
+   - **S regime** (seen pair, missing side effect) → scores for **every triple of labelled pairs**: random-split protocol, triples in 10 folds (positives and zeros); the pair's other side effects stay in the message graph.
+   - **Folds (spec audit):** run k scores fold k, uses fold k+1 (wrapping around) as the validation slice for early stopping and Platt, and trains on the other 8 folds; the same in both regimes.
 2. **Platt scaling per side effect:** `p = σ(a_r · logit + c_r)`, fitted per fold model and regime on that run's early-stopping validation slice. Plain PyTorch: all 963 side effects at once, minimising BCE (seconds). Not temperature scaling, not isotonic, not a library.
-3. **Reporting** (final model only, per regime, on the held-out folds): reliability diagrams pooled and for rare / median / common side effects; ECE with 15 equal-count bins; predicted vs observed number of positives per side effect.
+3. **Reporting** (final model only, per regime, on the held-out folds): reliability diagrams pooled and for rare / median / common side effects (by training positives); ECE with 15 equal-count bins; predicted vs observed number of positives per side effect.
 
 The burden uses the S-regime prediction for every triple of a labelled pair, labelled side effects included; labels never replace predictions (#18).
 
@@ -163,4 +165,5 @@ The burden uses the S-regime prediction for every triple of a labelled pair, lab
 - **Model ↔ burden interface:** #17.
 - **Burden formula:** #18.
 - **HGT, TIP:** #24. **Drug sets of 3+ drugs:** #21. **Severity weights:** #20.
+- **True higher-order (3+ drug) models:** Decagon has no 3+ drug data.
 - **Drugs outside the 645** (inductive embedding, `PROJECT_CONTEXT.md` `10.5`): out of scope; coverage is reported instead.
