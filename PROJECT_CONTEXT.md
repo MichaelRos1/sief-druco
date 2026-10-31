@@ -23,7 +23,7 @@
 - **1.2 RQ1 (model):** How well does a graph neural network trained on Decagon predict polypharmacy side effects under pair-level and drug-level splits, compared with simple baselines (additive per-drug model, tensor factorisation)?
 - **1.3 RQ2 (exposure):** Which drug pairs and sets are taken together in the population, how often, and what share of real co-medication is covered by Decagon's 645 drugs?
 - **1.4 RQ3 (burden):** When predicted risk is weighted by co-prescription prevalence, which pairs and which side effects account for most of the burden? How many top-burden pairs are neither known to Decagon (its labels) nor clinically documented (DDInter graded levels, DrugBank hand check)? Defined in `7` step 7 (#19).
-- **1.5 RQ4 (patient groups):** How is predicted burden distributed across patient groups (age, number of concurrent drugs)?
+- **1.5 RQ4 (patient groups):** How is predicted burden distributed across patient groups (age, number of concurrent drugs)? Answered at the pair level, defined in `7` step 6 (#25).
 - **1.6 Motivation:** Existing work (Decagon, `10.1`) asks "is this pair risky?" on a fixed benchmark and ignores which pairs people actually take. A risky pair that is almost never co-prescribed matters less for public health than a moderately risky pair taken by millions. Risk × prevalence gives a prioritised list for pharmacovigilance and prescribers.
 
 ---
@@ -227,7 +227,11 @@ Source: Stanford SNAP (`snap.stanford.edu/decagon`) and BioSNAP. Column names ar
    - `p` is the cross-fitted, calibrated prediction for **every** triple, including a labelled pair's labelled side effects (S regime); labels never replace predictions, so labelled and unlabelled pairs are on the same footing.
    - Three rankings: pairs and triples (only pairs with ≥ 30 participants, `4.4`), side effects (all covered pairs). → RQ3
    - **Uncertainty:** the Korn–Graubard 95% interval on prevalence, carried into burden with `p` held fixed. Model uncertainty only through per-side-effect columns (held-out AUPRC, predicted vs observed positives); no rank intervals.
-6. **Patient-level risk:** per participant, aggregate over all their pairs (`6.7`); summarise by age group and number of drugs using survey weights. → RQ4
+6. **Patient groups (decided on #25):** pair level only. A person's burden is the sum of Σ_r p_r over their covered pairs (expected signals across their pairs; a drug counts again in each pair). No per-patient risk: aggregating pairs (noisy-OR / max, `6.7`) belongs to drug sets (#21). → RQ4
+   - **Age bands:** 0–17, 18–44, 45–64, 65+. **Drug-count bands:** all prescription ingredients, including those outside the 645: 2, 3–4, 5–9, 10+ (0–1 only as a population share). No sex split, no age × drug-count cross-table.
+   - **Per band, both types:** (a) share of total burden; (b) burden per person per 100,000 with a 95% Taylor interval (`p` fixed), next to the mean number of covered pairs per person (n drugs give n(n−1)/2 pairs); (c) top 10 pairs by burden in the band, only pairs with ≥ 30 participants within the band. Thin bands are marked "fewer than 10 rankable pairs" or "too few participants to rank".
+   - **Band list columns:** pair, band prevalence per 100,000 with Korn–Graubard interval, band burden, overall rank, known to Decagon, clinically documented. Novelty tables stay overall (step 7).
+   - NHANES 2017–18: people aged 45+ hold 92% of covered person-pairs; people on 5+ drugs hold 89%.
 7. **Novelty check (decided on #19):** every covered pair and pair × side effect gets two labels, never merged:
    - **Known to Decagon:** pair = has any label in the 963-side-effect table the burden model is trained on; triple = that triple is a label.
    - **Clinically documented:** pair = DDInter 1.0 (all 14 CSVs, de-duplicated, highest level kept, joined by name → RxNorm IN) lists it as Major, Moderate or Minor. "Unknown" (description incomplete) counts as not documented; its share goes in a footnote. Triples inherit the pair's status, marked "pair-level only"; no source documents a specific side effect.
