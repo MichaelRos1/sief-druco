@@ -4,3 +4,6 @@
 local/
 .claude/worktrees/
 .claude/settings.local.json
+*.egg-info/
+__pycache__/
+.pytest_cache/

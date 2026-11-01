@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sief-druco"
+version = "0.1.0"
+description = "Polypharmacy side-effect prediction on Decagon, weighted by co-prescription"
+requires-python = ">=3.13"
+dependencies = [
+    # The versions tested on MPS in #3.
+    "torch==2.15.0",
+    "torch_geometric==2.8.1",
+    "numpy",
+    "pandas",
+    "scipy",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
