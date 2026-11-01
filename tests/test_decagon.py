@@ -36,6 +36,18 @@ def test_pair_id_rejects_self_pairs():
         decagon.pair_id(np.array([5]), np.array([5]))
 
 
+@pytest.mark.parametrize("a, b", [(0, 645), (644, 645), (-1, 3)])
+def test_pair_id_rejects_drugs_out_of_range(a, b):
+    with pytest.raises(ValueError):
+        decagon.pair_id(np.array([a]), np.array([b]))
+
+
+@pytest.mark.parametrize("pid", [-1, 207_690])
+def test_pair_of_rejects_ids_out_of_range(pid):
+    with pytest.raises(ValueError):
+        decagon.pair_of(np.array([pid]))
+
+
 # --- Checksums (no data needed) ---
 
 
@@ -132,6 +144,15 @@ def test_known_pair_and_side_effect(data):
     # Hypermagnesemia (387 pairs) is below the 500-pair cut.
     with pytest.raises(KeyError):
         data.side_effect_index(["C0151714"])
+
+
+@needs_raw
+def test_lookup_rejects_ids_longer_than_a_real_one(data):
+    # Each is a real ID with one character appended.
+    with pytest.raises(KeyError):
+        data.side_effect_index(["C00028711"])
+    with pytest.raises(KeyError):
+        data.drug_index(["CID0000039299"])
 
 
 @needs_raw

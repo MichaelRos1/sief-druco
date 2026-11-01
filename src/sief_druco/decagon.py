@@ -28,6 +28,7 @@ FILES = {
 }
 
 N_DRUGS = 645
+N_PAIRS = N_DRUGS * (N_DRUGS - 1) // 2
 MIN_PAIRS_PER_SIDE_EFFECT = 500
 
 # Bump when the parsed layout changes, so stale caches are rebuilt.
@@ -48,11 +49,16 @@ def pair_id(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     a, b = np.minimum(a, b).astype(np.int64), np.maximum(a, b).astype(np.int64)
     if np.any(a == b):
         raise ValueError("a drug pair needs two distinct drugs")
+    if np.any(a < 0) or np.any(b >= N_DRUGS):
+        raise ValueError(f"drug indices must be in 0..{N_DRUGS - 1}")
     return a * (2 * N_DRUGS - a - 1) // 2 + (b - a - 1)
 
 
 def pair_of(ids: np.ndarray) -> np.ndarray:
     """`(a, b)` rows for the given pair IDs, `a < b`."""
+    ids = np.asarray(ids)
+    if np.any(ids < 0) or np.any(ids >= N_PAIRS):
+        raise ValueError(f"pair IDs must be in 0..{N_PAIRS - 1}")
     return all_pairs()[ids]
 
 
@@ -98,7 +104,8 @@ class Decagon:
 
 
 def _lookup(sorted_ids: np.ndarray, ids) -> np.ndarray:
-    ids = np.asarray(ids, dtype=sorted_ids.dtype)
+    # No cast to sorted_ids.dtype: a fixed-width string cast would cut off extra characters.
+    ids = np.asarray(ids)
     idx = np.searchsorted(sorted_ids, ids)
     idx = np.minimum(idx, len(sorted_ids) - 1)
     if not np.array_equal(sorted_ids[idx], ids):
@@ -141,13 +148,12 @@ def parse(raw_dir: Path = RAW_DIR) -> Decagon:
         "Polypharmacy Side Effect"
     )["Side Effect Name"]
 
-    n_pairs = N_DRUGS * (N_DRUGS - 1) // 2
     labels = sp.csr_matrix(
         (
             np.ones(len(triples), dtype=np.uint8),
             (triples["pair"], np.searchsorted(side_effect_ids, triples["cui"])),
         ),
-        shape=(n_pairs, len(side_effect_ids)),
+        shape=(N_PAIRS, len(side_effect_ids)),
     )
 
     # Proteins: every PPI protein plus target proteins missing from the PPI graph.
