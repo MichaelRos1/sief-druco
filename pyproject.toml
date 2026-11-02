@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest"]
+dev = ["pytest", "scikit-learn"]  # sklearn: reference values in the metric tests
 
 [tool.setuptools.packages.find]
 where = ["src"]
