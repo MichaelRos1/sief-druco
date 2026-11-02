@@ -2,8 +2,8 @@
 
 Spec: `docs/spec-model.md` §6; held-out zeros: #7.
 
-Fold k is drawn from seed k and saved; `load` reads the saved draw and never redraws
-it. Roles are uint8 codes: the random split gives one per triple `[207690, 963]`, the
+Fold k of a split is drawn from that split's seed k (`SEEDS`) and saved; `load` reads
+the saved draw and never redraws it. Roles are uint8 codes: the random split gives one per triple `[207690, 963]`, the
 pair-level and cold-drug splits one per pair `[207690]` (cold-drug also keeps its
 per-drug roles). Shares are rounded down, as in Decagon's code.
 
@@ -22,6 +22,8 @@ from sief_druco import decagon
 SPLITS_DIR = decagon.LOCAL_DIR / "splits"
 SPLITS = ("random", "pair", "cold_drug")
 N_FOLDS = 3
+# Each split has its own seeds, so no two splits start from the same shuffle.
+SEEDS = {"random": (0, 1, 2), "pair": (10, 11, 12), "cold_drug": (20, 21, 22)}
 
 TRAIN, VAL, TEST, UNUSED, TEST_TWO_NEW = 0, 1, 2, 3, 4
 ROLE_NAMES = {TRAIN: "train", VAL: "val", TEST: "test", UNUSED: "unused", TEST_TWO_NEW: "test_two_new"}
@@ -62,8 +64,11 @@ def random_roles(labels: sp.spmatrix, rng: np.random.Generator) -> np.ndarray:
         is_pos[cols.indices[cols.indptr[r] : cols.indptr[r + 1]]] = True
         order = rng.permutation(n_pairs)
         n_pos = int(is_pos.sum())
+        k_pos = max(RANDOM_MIN_POSITIVES, _share(n_pos, RANDOM_PERCENT))
+        if n_pos < 2 * k_pos:
+            raise ValueError(f"side effect {r} has {n_pos} positives, fewer than 2 × {k_pos}")
         for group, k in (
-            (order[is_pos[order]], max(RANDOM_MIN_POSITIVES, _share(n_pos, RANDOM_PERCENT))),
+            (order[is_pos[order]], k_pos),
             (order[~is_pos[order]], _share(n_pairs - n_pos, RANDOM_PERCENT)),
         ):
             roles[r, group[:k]] = VAL
@@ -116,25 +121,28 @@ def no_input_drugs(data) -> np.ndarray:
 
 
 def draw(split: str, fold: int, data) -> Fold:
-    """Draw fold `fold` of `split` from seed `fold`. Use `load` to get the saved draw."""
-    rng = np.random.default_rng(fold)
+    """Draw fold `fold` of `split` from its seed in `SEEDS`. Use `load` to get the saved draw."""
+    if split not in SPLITS:
+        raise ValueError(f"unknown split {split!r}; expected one of {SPLITS}")
+    seed = SEEDS[split][fold]
+    rng = np.random.default_rng(seed)
     drug_roles = None
     if split == "random":
         roles = random_roles(data.labels, rng)
     elif split == "pair":
         roles = pair_roles(rng, data.labels.shape[0])
-    elif split == "cold_drug":
+    else:
         drug_roles = cold_drug_drug_roles(no_input_drugs(data), rng)
         roles = cold_drug_pair_roles(drug_roles)
-    else:
-        raise ValueError(f"unknown split {split!r}; expected one of {SPLITS}")
-    return Fold(split, fold, roles, drug_roles, _meta(split, fold, roles, drug_roles, data.labels))
+    meta = _meta(split, fold, seed, roles, drug_roles, data.labels)
+    return Fold(split, fold, roles, drug_roles, meta)
 
 
-def _meta(split, fold, roles, drug_roles, labels) -> dict:
+def _meta(split, fold, seed, roles, drug_roles, labels) -> dict:
     labels = sp.csr_matrix(labels)
     if roles.ndim == 2:  # per triple
-        n = np.bincount(roles.ravel(), minlength=len(ROLE_NAMES))
+        # Count per code: bincount would copy the 200 MB uint8 mask into a 1.6 GB intp one.
+        n = np.array([np.count_nonzero(roles == code) for code in range(len(ROLE_NAMES))])
         rows, cols = labels.nonzero()
         pos_roles = roles[rows, cols]
         positives = np.bincount(pos_roles, minlength=len(ROLE_NAMES))
@@ -152,7 +160,7 @@ def _meta(split, fold, roles, drug_roles, labels) -> dict:
     meta = {
         "split": split,
         "fold": fold,
-        "seed": fold,
+        "seed": seed,
         "unit": "triple" if roles.ndim == 2 else "pair",
         "counts": counts,
         "min_test_positives_per_side_effect": int(test_pos.min()),

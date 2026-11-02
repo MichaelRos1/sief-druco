@@ -58,6 +58,12 @@ def test_random_floor_of_50_positives(toy_labels):
     assert (pos == TEST).sum() == 50  # not 5% of 600 = 30
 
 
+def test_random_rejects_side_effects_too_small_for_the_floor():
+    labels = sp.csr_matrix((np.ones(80, dtype=np.uint8), (np.arange(80), np.zeros(80))), shape=(N, 1))
+    with pytest.raises(ValueError):
+        splits.random_roles(labels, rng())
+
+
 # --- Pair-level ---
 
 
@@ -132,14 +138,50 @@ def test_load_returns_the_saved_draw_and_never_redraws(split, toy_data, tmp_path
         assert np.array_equal(first.drug_roles, again.drug_roles)
 
 
-def test_meta_records_seed_counts_and_min_test_positives(toy_data):
-    f = splits.draw("pair", 2, toy_data)
-    assert f.meta["seed"] == 2
-    counts = f.meta["counts"]
-    assert sum(c["n"] for c in counts.values()) == N
-    assert sum(c["positives"] for c in counts.values()) == toy_data.labels.nnz
-    test_pos = toy_data.labels[f.roles == TEST].sum(axis=0)
+@pytest.mark.parametrize("split", splits.SPLITS)
+@pytest.mark.parametrize("fold", range(splits.N_FOLDS))
+def test_fold_k_is_drawn_from_its_split_seed(split, fold, toy_data):
+    g = rng(splits.SEEDS[split][fold])
+    if split == "random":
+        expected = splits.random_roles(toy_data.labels, g)
+    elif split == "pair":
+        expected = splits.pair_roles(g)
+    else:
+        expected = splits.cold_drug_pair_roles(
+            splits.cold_drug_drug_roles(splits.no_input_drugs(toy_data), g)
+        )
+    f = splits.draw(split, fold, toy_data)
+    assert np.array_equal(f.roles, expected)
+    assert f.meta["seed"] == splits.SEEDS[split][fold]
+
+
+def test_no_two_splits_share_a_seed():
+    seeds = [s for split in splits.SPLITS for s in splits.SEEDS[split]]
+    assert len(set(seeds)) == len(seeds) == len(splits.SPLITS) * splits.N_FOLDS
+
+
+@pytest.mark.parametrize("split", splits.SPLITS)
+def test_meta_matches_an_independent_count(split, toy_data):
+    f = splits.draw(split, 0, toy_data)
+    dense = toy_data.labels.toarray().astype(bool)
+    in_role = lambda code: f.roles == code
+    if split == "random":  # roles per triple
+        positives = lambda code: (in_role(code) & dense).sum()
+        test_pos = (in_role(TEST) & dense).sum(axis=0)
+    else:  # roles per pair; for cold-drug, "test" is the one-new-drug pairs only
+        positives = lambda code: dense[in_role(code)].sum()
+        test_pos = dense[in_role(TEST)].sum(axis=0)
+    # Names spelled out here, not taken from the module, so a swapped name fails.
+    names = {TRAIN: "train", VAL: "val", TEST: "test", UNUSED: "unused", TEST_TWO_NEW: "test_two_new"}
+    expected = {
+        name: {"n": int(in_role(code).sum()), "positives": int(positives(code))}
+        for code, name in names.items()
+        if in_role(code).any()
+    }
+    assert f.meta["counts"] == expected
     assert f.meta["min_test_positives_per_side_effect"] == test_pos.min()
+    if split == "cold_drug":
+        assert f.meta["drugs"] == {"train": 645 - 128, "val": 64, "test": 64}
 
 
 def test_unknown_split_raises(toy_data):
@@ -180,7 +222,7 @@ def test_real_cold_drug_keeps_no_input_drugs_in_training(data, real_folds):
 
 @needs_raw
 def test_real_meta_covers_every_split(real_folds):
-    for f in real_folds.values():
-        assert f.meta["seed"] == 0
+    for split, f in real_folds.items():
+        assert f.meta["seed"] == splits.SEEDS[split][0]
         assert f.meta["counts"]["test"]["positives"] > 0
         assert f.meta["min_test_positives_per_side_effect"] > 0
