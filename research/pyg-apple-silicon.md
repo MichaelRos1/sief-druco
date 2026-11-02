@@ -2,7 +2,7 @@
 
 Research for issue #3 (map #1). Researched 2026-10-27; second pass 2026-10-28 (items from the
 PARTIAL comment: `scatter_reduce` amax on MPS, memory/time figures, dense RGCN rewrite).
-Point IDs (`3.2`, `5.3`, ...) refer to `PROJECT_CONTEXT.md`.
+Point IDs (`3.2`, `5.3`, ...) refer to `docs/PROJECT_CONTEXT.md`.
 
 **Machine checked:** Apple M4, 24 GB unified memory, macOS 15.5 (`sysctl`, `sw_vers`).
 **Software state at time of writing:** PyTorch 2.14.1 is the latest GitHub release (2026-09-30) [S14];

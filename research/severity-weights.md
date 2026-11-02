@@ -1,6 +1,6 @@
 # Severity weights for Decagon side effects
 
-Research for issue #14 (point `10.2` in `PROJECT_CONTEXT.md`): can each of Decagon's polypharmacy side effects get a severity weight for `burden(a, b) = Σ_r prevalence(a, b) × p_r(a, b) × severity_r`? Which sources exist, in what form, with what IDs, and how many of the side effects do they cover?
+Research for issue #14 (point `10.2` in `docs/PROJECT_CONTEXT.md`): can each of Decagon's polypharmacy side effects get a severity weight for `burden(a, b) = Σ_r prevalence(a, b) × p_r(a, b) × severity_r`? Which sources exist, in what form, with what IDs, and how many of the side effects do they cover?
 
 All coverage numbers below were computed on 2026-10-27 from the downloaded files (method in [How the numbers were computed](#how-the-numbers-were-computed)).
 

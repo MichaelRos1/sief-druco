@@ -1,12 +1,12 @@
 # Decagon files: columns, counts and coverage
 
-Facts for issue #4 (map #1). Checked 2026-10-29 on the downloaded files. Point IDs (`3.1`, `3.3.1`, ...) refer to `PROJECT_CONTEXT.md`. Nothing is decided here; the facts feed #5 (graph inputs) and #6 (splits).
+Facts for issue #4 (map #1). Checked 2026-10-29 on the downloaded files. Point IDs (`3.1`, `3.3.1`, ...) refer to `docs/PROJECT_CONTEXT.md`. Nothing is decided here; the facts feed #5 (graph inputs) and #6 (splits).
 
 Every number below was computed from the files with pandas (all columns read as strings). Nothing here comes from memory.
 
 ## 1. Short answer
 
-| Question from #4 | Answer | `PROJECT_CONTEXT.md` said |
+| Question from #4 | Answer | `docs/PROJECT_CONTEXT.md` said |
 |---|---|---|
 | Column names | As listed in `3.1`, exactly (section 3) | same, marked "verify" |
 | Side effects with ≥ 500 pairs | **963**, not 964. No counting rule gives 964 on this file (section 4) | 964 |

@@ -1,6 +1,6 @@
 # Coverage pilot: NHANES 2017–2018 → Decagon's 645 drugs
 
-Research for issue #16 (map #1), points `4.2`–`4.3` of `PROJECT_CONTEXT.md`. Run on 2026-10-29 on NHANES 2017–2018 (cycle J). It uses the reverse route decided on #12 (`research/nhanes-stitch-mapping.md`). It records numbers and decides nothing.
+Research for issue #16 (map #1), points `4.2`–`4.3` of `docs/PROJECT_CONTEXT.md`. Run on 2026-10-29 on NHANES 2017–2018 (cycle J). It uses the reverse route decided on #12 (`research/nhanes-stitch-mapping.md`). It records numbers and decides nothing.
 
 **Status: done for #16.** Every number below was computed. The name-check hits and the two RxNorm questions were checked by hand on 2026-10-29 (section 7.1). Two hand checks are left: the 34 unmatched Decagon drugs and the 17 Decagon drugs that reached more than one ingredient. They belong to "Handling failed drug-name mappings" (#26, decided 2026-10-31: Decagon-side hand fixes only, by an alias rule, done when the mapping pipeline is built). Section 7 bounds how much they could move the numbers. The numbers in this note are **not** reclassified after the hand checks.
 

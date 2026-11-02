@@ -1,6 +1,6 @@
 # NHANES Prescription Medications files: cycles, drug ID fields, pooling rules
 
-Research for issue #11 (map #1). It collects facts for choosing which cycles to pool (`10.1` in `PROJECT_CONTEXT.md`). It makes no decisions.
+Research for issue #11 (map #1). It collects facts for choosing which cycles to pool (`10.1` in `docs/PROJECT_CONTEXT.md`). It makes no decisions.
 
 Sources are CDC/NCHS pages on `wwwn.cdc.gov`, fetched 2026-10-27: the per-cycle data documentation (codebooks), the NHANES weighting and variance tutorials, and the cycle overview briefs. Each claim links to the page it comes from. Numbers marked **derived** are arithmetic on published codebook counts, not figures NCHS publishes.
 

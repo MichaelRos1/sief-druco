@@ -1,6 +1,6 @@
 # Spec: co-prescription burden (Track 2, RQ2–RQ4)
 
-Build-ready spec for the pipeline that weights the model's calibrated `p_r(a, b)` by how many people in the US take each drug pair, ranks pairs, side effects and patient groups by burden, and checks how much of that burden is documented. Every decision below comes from a closed ticket of the [wayfinder map #1](https://github.com/MichaelRos1/sief-druco/issues/1); the ticket is named in each section and holds the reasoning. Background: `PROJECT_CONTEXT.md`. Vocabulary: `GLOSSARY.md`. Model side: `docs/spec-model.md`.
+Build-ready spec for the pipeline that weights the model's calibrated `p_r(a, b)` by how many people in the US take each drug pair, ranks pairs, side effects and patient groups by burden, and checks how much of that burden is documented. Every decision below comes from a closed ticket of the [wayfinder map #1](https://github.com/MichaelRos1/sief-druco/issues/1); the ticket is named in each section and holds the reasoning. Background: `docs/PROJECT_CONTEXT.md`. Vocabulary: `GLOSSARY.md`. Model side: `docs/spec-model.md`.
 
 The pipeline treats the model as a black box: it reads only the score table (§2). Pair-level only; drug sets (3+ drugs) are out of scope, but every table keeps each person's full drug list so they can be added later (#21).
 
@@ -186,6 +186,6 @@ Every re-run is compared with the main result by **overlap of the top 50 pairs**
 - **The model and the score table:** `docs/spec-model.md`.
 - **Drug sets of 3+ drugs** (noisy-OR / max, per-patient risk): #21. **Severity weights:** #20. **HGT, TIP:** #24.
 - **True higher-order (3+ drug) models:** Decagon has no 3+ drug data.
-- **Application layer** (`PROJECT_CONTEXT.md` `9`): belongs with drug sets.
+- **Application layer** (`docs/PROJECT_CONTEXT.md` `9`): belongs with drug sets.
 - **MIMIC-IV:** different population, needs PhysioNet credentialing.
 - **Inductive embedding of drugs outside the 645** (`10.5`): out of scope; coverage is reported instead.

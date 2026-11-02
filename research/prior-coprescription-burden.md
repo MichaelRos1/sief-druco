@@ -1,6 +1,6 @@
 # Prior work: co-prescription prevalence × drug-pair risk
 
-Ticket: #10 (map #1). Answers `10.4` in `PROJECT_CONTEXT.md`: has anyone weighted **predicted** drug-pair (polypharmacy side-effect) risk by real-world co-prescription prevalence to rank pairs by population burden? Also covers work on how common known risky pairs are in NHANES / MEPS / EHR / registries, and on how much real co-medication DDI benchmarks cover.
+Ticket: #10 (map #1). Answers `10.4` in `docs/PROJECT_CONTEXT.md`: has anyone weighted **predicted** drug-pair (polypharmacy side-effect) risk by real-world co-prescription prevalence to rank pairs by population burden? Also covers work on how common known risky pairs are in NHANES / MEPS / EHR / registries, and on how much real co-medication DDI benchmarks cover.
 
 Date of search: 2026-10-27 (first pass); 2026-10-28 (follow-up: ML / informatics venues, Nordic and UK registries, check of items that came from prior knowledge); 2026-10-28 (final pass: Google Scholar searched by hand, Saha et al. 2024 read in full). Exact queries are in *Search log*. Failed requests are in *Blockers*.
 

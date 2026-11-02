@@ -1,6 +1,6 @@
 # Spec: drug-pair side-effect model (Track 1, RQ1)
 
-Build-ready spec for the model that outputs a calibrated `p_r(a, b)` for any pair of Decagon's 645 drugs and 963 side effects, and for the evaluation protocol that answers RQ1. Every decision below comes from a closed ticket of the [wayfinder map #1](https://github.com/MichaelRos1/sief-druco/issues/1); the ticket is named in each section and holds the reasoning. Background: `PROJECT_CONTEXT.md`. Vocabulary: `GLOSSARY.md`.
+Build-ready spec for the model that outputs a calibrated `p_r(a, b)` for any pair of Decagon's 645 drugs and 963 side effects, and for the evaluation protocol that answers RQ1. Every decision below comes from a closed ticket of the [wayfinder map #1](https://github.com/MichaelRos1/sief-druco/issues/1); the ticket is named in each section and holds the reasoning. Background: `docs/PROJECT_CONTEXT.md`. Vocabulary: `GLOSSARY.md`.
 
 Choices that depend on experiment results (the final encoder, the decoder, hyperparameters) are fixed as **procedures**, not outcomes.
 
@@ -166,4 +166,4 @@ The burden uses the S-regime prediction for every triple of a labelled pair, lab
 - **Burden formula:** #18.
 - **HGT, TIP:** #24. **Drug sets of 3+ drugs:** #21. **Severity weights:** #20.
 - **True higher-order (3+ drug) models:** Decagon has no 3+ drug data.
-- **Drugs outside the 645** (inductive embedding, `PROJECT_CONTEXT.md` `10.5`): out of scope; coverage is reported instead.
+- **Drugs outside the 645** (inductive embedding, `docs/PROJECT_CONTEXT.md` `10.5`): out of scope; coverage is reported instead.

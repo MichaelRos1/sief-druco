@@ -1,6 +1,6 @@
 # MEPS Prescribed Medicines files 2015–2019: drug fields, concurrent use, weights and pooling
 
-Research for issue #23 (map #1). It collects facts for the MEPS robustness check (`7.1`, `2.5` in `PROJECT_CONTEXT.md`), the counterpart of `research/nhanes-prescription-files.md` (#11). It makes no decisions.
+Research for issue #23 (map #1). It collects facts for the MEPS robustness check (`7.1`, `2.5` in `docs/PROJECT_CONTEXT.md`), the counterpart of `research/nhanes-prescription-files.md` (#11). It makes no decisions.
 
 **Status: complete for the ticket's four questions.** Questions 1–3 are answered from AHRQ primary sources. The data-dependent parts (persons with ≥ 2 medicines, how many records reach an RxNorm ingredient, name stability) were counted from the five PMED data files on 2026-10-30 (§2.4, §5; marked **[data 2026-10-30]**). Three side questions stay open (*Left open*); none blocks the ticket's questions.
 
@@ -277,4 +277,4 @@ NLM RxNav (for the mapping route; fetched/called 2026-10-30)
 - findRxcuiById documentation: https://lhncbc.nlm.nih.gov/RxNav/APIs/api-RxNorm.findRxcuiById.html
 - Live calls to `https://rxnav.nlm.nih.gov/REST/` (`version.json`, `rxcui.json?idtype=NDC`, `ndcstatus.json`, `rxcui.json?name=…&search=2`, `approximateTerm.json`), data version `05-Oct-2026`.
 
-Project documents: `research/nhanes-prescription-files.md`, `research/nhanes-stitch-mapping.md`, `PROJECT_CONTEXT.md` (`4`, `4.1`, `4.4`, `7.1`).
+Project documents: `research/nhanes-prescription-files.md`, `research/nhanes-stitch-mapping.md`, `docs/PROJECT_CONTEXT.md` (`4`, `4.1`, `4.4`, `7.1`).

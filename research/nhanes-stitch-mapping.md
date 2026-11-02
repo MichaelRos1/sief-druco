@@ -1,6 +1,6 @@
 # Mapping route: NHANES drugs → Decagon STITCH IDs
 
-Research for issue #12 (map #1), point `4.2` of `PROJECT_CONTEXT.md`.
+Research for issue #12 (map #1), point `4.2` of `docs/PROJECT_CONTEXT.md`.
 Date: 2026-10-27, updated 2026-10-28 after the route decision on the issue ("Route decided: reverse direction"). Live checks were run against RxNav (`rxnav.nlm.nih.gov/REST`, data version `05-Oct-2026`, API `3.1.356` per `/REST/version.json`) and PubChem PUG-REST / PUG-View on these dates.
 
 Status markers: **[verified]** = confirmed in a primary doc or a live API call; **[to verify]** = from memory or a secondary source, check before relying on it; **[corrected]** = a preliminary claim from 2026-10-27 that turned out wrong; **[blocked]** = could not be checked, see *Blockers* at the end.
