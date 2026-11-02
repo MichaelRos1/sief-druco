@@ -10,20 +10,18 @@ boolean `mask` of the triples that count (the random split's held-out triples; `
 full rows), and `pairs` `[n_pairs, 2]` with each row's drugs, for subgroups and the
 bootstrap. How the splits use it:
 
-- Pair-level and cold-drug: `evaluate` on the full rows of the held-out pairs. Cold-drug
-  two-new-drug pairs: read only the `micro_*` numbers.
+- Pair-level: `evaluate` on the full rows of the held-out pairs.
+- Cold-drug: `new_drug_groups(pairs, test_drugs)` splits the test pairs. One-new-drug
+  pairs: `evaluate` as above. Two-new-drug pairs: report only the `micro_*` numbers.
 - Random split: `evaluate` with `mask` = held-out triples (full held-out number), and with
   `mask = uniform_negatives(labels, mask, seed)` (Decagon's 1:1 number).
 - Subgroups: `subgroups(pairs, has_targets)` gives row masks; evaluate each subset.
 
 AUPRC is average precision with ties grouped, as in `sklearn.metrics.average_precision_score`;
 AUROC as `roc_auc_score`; AP@50 is Decagon's `apk(k=50)` on the ranking (ties keep row
-order). A side effect without positives (or, for AUROC, without zeros) gets NaN and is
-left out of the macro average.
-
-Measured on the M4 with synthetic scores: `evaluate` on one pair-level fold's full rows
-(20,769 pairs × 963) takes 5 s; on the random split's held-out triples 4 s; the 1:1
-negatives 2.5 s; `cluster_bootstrap` with 1,000 resamples 35 s (MPS). Peak 4.4 GB.
+order). AP@50 has no micro average: the top 50 of millions of pooled triples says little.
+A side effect without positives (or, for AUROC, without zeros) gets NaN and is left out
+of the macro average.
 """
 
 from dataclasses import dataclass
@@ -48,11 +46,15 @@ class _Ranked:
     last: np.ndarray | None  # [groups, m], last rank of the tie group
 
 
+def _dense(labels) -> np.ndarray:
+    return labels.toarray() if sp.issparse(labels) else np.asarray(labels)
+
+
 def _inputs(scores, labels, mask):
     scores = np.asarray(scores)
     if not np.issubdtype(scores.dtype, np.floating):
         scores = scores.astype(np.float64)
-    labels = labels.toarray() if sp.issparse(labels) else np.asarray(labels)
+    labels = _dense(labels)
     if labels.shape != scores.shape:
         raise ValueError(f"labels {labels.shape} and scores {scores.shape} differ in shape")
     if mask is not None:
@@ -186,7 +188,7 @@ def uniform_negatives(labels, mask, seed: int) -> np.ndarray:
 
     Returns a new mask for `evaluate`. Zeros come only from `mask` (never trained on).
     """
-    labels = labels.toarray() if sp.issparse(labels) else np.asarray(labels)
+    labels = _dense(labels)
     mask = np.asarray(mask, dtype=bool)
     rng = np.random.default_rng(seed)
     out = mask & (labels == 1)
@@ -206,6 +208,12 @@ def subgroups(pairs: np.ndarray, has_targets: np.ndarray) -> dict[str, np.ndarra
     """
     n_with = has_targets[pairs].sum(axis=1)
     return {"targets": n_with == 2, "no_targets": n_with == 0, "mixed": n_with == 1}
+
+
+def new_drug_groups(pairs: np.ndarray, new_drugs: np.ndarray) -> dict[str, np.ndarray]:
+    """Cold-drug row masks: pairs with one new drug (scored, macro) and with two (micro only)."""
+    n_new = np.isin(pairs, new_drugs).sum(axis=1)
+    return {"one_new": n_new == 1, "two_new": n_new == 2}
 
 
 def resample_weights(pairs: np.ndarray, drugs: np.ndarray, rng: np.random.Generator) -> np.ndarray:
@@ -235,12 +243,12 @@ def cluster_bootstrap(
 
     `drugs` defaults to every drug in `pairs` (pair-level, random split); for cold-drug
     pass the test drugs, so each one-new-drug pair follows its new drug. `device`
-    defaults to MPS when available (~35 s for one pair-level fold's full rows on the M4).
+    defaults to MPS when available.
 
     Normal interval `θ ± 1.96 · sd` over the resamples, not percentiles: a resample
-    repeats drugs, which shrinks the sample and lifts AUPRC (on a pair-level fold of
-    synthetic scores by ~6× the spread), so percentile intervals, plain or reflected,
-    can miss the point estimate. The spread itself is what the drug clusters set.
+    repeats drugs, which shrinks the sample and lifts AUPRC by more than its spread, so
+    percentile intervals, plain or reflected, can miss the point estimate. The spread
+    itself is what the drug clusters set.
     """
     scores, labels, mask = _inputs(scores, labels, mask)
     pairs = np.asarray(pairs)

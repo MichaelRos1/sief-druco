@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import scipy.sparse as sp
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 from sief_druco import metrics
@@ -92,8 +93,6 @@ def test_side_effect_without_positives_is_nan_and_left_out_of_macro():
 
 
 def test_sparse_labels_are_accepted():
-    import scipy.sparse as sp
-
     scores, labels = synthetic()
     dense = metrics.evaluate(scores, labels)
     sparse = metrics.evaluate(scores, sp.csr_matrix(labels))
@@ -174,6 +173,13 @@ def test_subgroups_split_pairs_by_how_many_drugs_have_targets():
     assert g["targets"].tolist() == [True, False, False, False]
     assert g["no_targets"].tolist() == [False, False, True, False]
     assert g["mixed"].tolist() == [False, True, False, True]
+
+
+def test_new_drug_groups_split_cold_drug_pairs_by_number_of_new_drugs():
+    pairs = np.array([[0, 1], [0, 5], [1, 6], [5, 6]])
+    g = metrics.new_drug_groups(pairs, new_drugs=np.array([5, 6]))
+    assert g["one_new"].tolist() == [False, True, True, False]
+    assert g["two_new"].tolist() == [False, False, False, True]
 
 
 # --- Cluster bootstrap over drugs ---
