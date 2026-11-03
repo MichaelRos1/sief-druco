@@ -16,7 +16,7 @@ The repo is public: personal notes and learning files live in the git-ignored `l
 
 ## Running
 
-- `.venv/bin/pytest`. The full suite takes ~2 min, mostly the three short training runs; `-k "not short_run"` is the fast pass.
+- `.venv/bin/pytest`. The full suite takes ~3 min, mostly the short training runs and the short sweep (`short_run` in their names); `-k "not short_run"` is the fast pass.
 - Raw Decagon files sit in `local/data/raw/decagon/`; everything derived (splits, runs, scores) goes under `local/`.
 - Training shares the one MPS GPU: run timed jobs alone, since two at once roughly double epoch times.
 - Pilot scripts and logs from the design tickets live in `local/data/scratch/` (e.g. `convergence/converge.py`, the training pilot of #8).

@@ -50,6 +50,7 @@ class Config:
     lr: float = 1e-2
     dropout: float = 0.0
     loss_weights: str = "none"
+    proteins: bool = True  # False: the no-protein ablation (§4.3), drug–drug edges only
     # Sampling switch (§5, fallback only): keep each zero with probability beta, redrawn
     # every epoch, and add log(beta) to the logits at evaluation. None = full rows.
     beta: float | None = None
@@ -66,10 +67,20 @@ class Config:
         for key, tag in (("beta", "beta"), ("patience", "pat"), ("max_epochs", "ep")):
             if getattr(self, key) != getattr(defaults, key):
                 parts.append(f"{tag}{getattr(self, key):g}")
+        if not self.proteins:
+            parts.append("noprot")
         return "_".join(parts)
+
+    @property
+    def label(self) -> str:
+        return f"{self.split} fold{self.fold} seed{self.seed} {self.name}"
 
     def run_dir(self, runs_dir: Path = RUNS_DIR) -> Path:
         return runs_dir / self.split / f"fold{self.fold}" / f"seed{self.seed}" / self.name
+
+    def is_done(self, runs_dir: Path = RUNS_DIR) -> bool:
+        """A run is done once its `metrics.json` exists: `_write` puts it in place last."""
+        return (self.run_dir(runs_dir) / "metrics.json").exists()
 
 
 # --- One step and scoring ---
@@ -181,12 +192,17 @@ def _git_commit() -> tuple[str | None, bool]:
         return None, False
 
 
-def run(config: Config, data=None, runs_dir: Path = RUNS_DIR, device=None) -> dict:
-    """Train one config, keep the best epoch, score its test rows and write the run files."""
-    for value, allowed in ((config.encoder, ENCODERS), (config.decoder, DECODERS),
-                           (config.loss_weights, LOSS_WEIGHTS)):
+def check(config: Config) -> None:
+    """Raise ValueError if the config names a split, encoder, decoder or loss weight that doesn't exist."""
+    for value, allowed in ((config.split, splits.SPLITS), (config.encoder, ENCODERS),
+                           (config.decoder, DECODERS), (config.loss_weights, LOSS_WEIGHTS)):
         if value not in allowed:
             raise ValueError(f"unknown setting {value!r}; expected one of {list(allowed)}")
+
+
+def run(config: Config, data=None, runs_dir: Path = RUNS_DIR, device=None) -> dict:
+    """Train one config, keep the best epoch, score its test rows and write the run files."""
+    check(config)
     device = _device(device)
     data = data if data is not None else decagon.load()
     fold = splits.load(config.split, config.fold, data)
@@ -195,7 +211,7 @@ def run(config: Config, data=None, runs_dir: Path = RUNS_DIR, device=None) -> di
     started = time.time()
 
     Encoder = ENCODERS[config.encoder]
-    graphs = MessageGraphs(data, fold, Encoder.drug_edges, Encoder.uses_proteins)
+    graphs = MessageGraphs(data, fold, Encoder.drug_edges, Encoder.uses_proteins and config.proteins)
     pairs = torch.from_numpy(data.pairs).to(device)
     labels = torch.from_numpy(data.labels.toarray()).to(device)  # uint8, ~200 MB
     is_train = torch.from_numpy(fold.roles).to(device) == TRAIN
@@ -324,14 +340,20 @@ def _write(config, runs_dir, model, log, arrays, summary, device) -> None:
         writer.writerows(log)
     torch.save(model.state_dict(), out / "weights.pt")
     np.savez_compressed(out / "metrics.npz", **arrays)
-    # Last: the run counts as done once this exists.
-    (out / "metrics.json").write_text(json.dumps(summary, indent=2) + "\n")
+    # Last, and whole: the run counts as done once this exists, so a kill mid-write must
+    # leave no truncated file behind.
+    tmp = out / "metrics.json.tmp"
+    tmp.write_text(json.dumps(summary, indent=2) + "\n")
+    tmp.replace(out / "metrics.json")
 
 
 def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description="Train and evaluate one run.")
     for f in fields(Config):
-        kind = f.type if f.type in (int, float, str) else float  # beta: float | None
+        if f.type is bool:
+            kind = lambda s: {"true": True, "false": False}[s.lower()]
+        else:
+            kind = f.type if f.type in (int, float, str) else float  # beta: float | None
         if f.default is MISSING:
             parser.add_argument(f"--{f.name}", type=kind, required=True)
         else:
