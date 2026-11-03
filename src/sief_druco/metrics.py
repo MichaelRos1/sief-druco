@@ -16,6 +16,7 @@ bootstrap. How the splits use it:
 - Random split: `evaluate` with `mask` = held-out triples (full held-out number), and with
   `mask = uniform_negatives(labels, mask, seed)` (Decagon's 1:1 number).
 - Subgroups: `subgroups(pairs, has_targets)` gives row masks; evaluate each subset.
+- Early stopping: `macro_auprc_torch` gives `evaluate`'s macro AUPRC on the GPU, every epoch.
 
 AUPRC is average precision with ties grouped, as in `sklearn.metrics.average_precision_score`;
 AUROC as `roc_auc_score`; AP@50 is Decagon's `apk(k=50)` on the ranking (ties keep row
@@ -180,6 +181,27 @@ def evaluate(scores, labels, mask=None) -> dict:
         "micro_auroc": float(micro_auroc[0]),
         "micro_base_rate": float(n_pos.sum() / n_triples.sum()),
     }
+
+
+def macro_auprc_torch(scores: torch.Tensor, labels: torch.Tensor, mask=None, chunk: int = 128) -> float:
+    """Macro AUPRC on the scores' device, for early stopping every epoch.
+
+    Same as `evaluate`'s `macro_auprc` except that ties are broken in arbitrary order, not
+    grouped; with float logits ties are rare. `labels` 0/1 and `mask` (bool, or `None` =
+    full rows) are tensors of the scores' shape. Side effects in chunks of `chunk` columns.
+    """
+    n = scores.shape[0]
+    precision_at = 1 / torch.arange(1, n + 1, device=scores.device, dtype=torch.float32)[:, None]
+    aps = []
+    for s in range(0, scores.shape[1], chunk):
+        sc, y = scores[:, s : s + chunk], labels[:, s : s + chunk].float()
+        if mask is not None:
+            # Uncounted triples sort last with label 0, so they add to no positive's precision.
+            m = mask[:, s : s + chunk]
+            sc, y = sc.masked_fill(~m, -torch.inf), y * m
+        y = y.gather(0, sc.argsort(dim=0, descending=True))
+        aps.append((y * y.cumsum(0) * precision_at).sum(0) / y.sum(0))
+    return float(torch.cat(aps).nanmean())
 
 
 def uniform_negatives(labels, mask, seed: int) -> np.ndarray:
