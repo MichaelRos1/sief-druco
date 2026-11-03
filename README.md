@@ -13,3 +13,9 @@ python3.13 -m venv .venv
 ```
 
 The raw Decagon files go in `local/data/raw/decagon/` (git-ignored, with `SHA256SUMS`). Tests that need them skip when they are missing. The parsed dataset is cached in `local/data/processed/decagon.npz` on first load.
+
+One training run (config → best weights, test metrics and an epoch log in `local/runs/`):
+
+```bash
+.venv/bin/python -m sief_druco.train --split pair --fold 0 --seed 0
+```

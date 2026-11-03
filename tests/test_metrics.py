@@ -1,6 +1,7 @@
 import numpy as np
 import pytest
 import scipy.sparse as sp
+import torch
 from sklearn.metrics import average_precision_score, roc_auc_score
 
 from sief_druco import metrics
@@ -97,6 +98,15 @@ def test_sparse_labels_are_accepted():
     dense = metrics.evaluate(scores, labels)
     sparse = metrics.evaluate(scores, sp.csr_matrix(labels))
     assert dense["macro_auprc"] == sparse["macro_auprc"]
+
+
+@pytest.mark.parametrize("masked", [False, True])
+def test_torch_macro_auprc_matches_evaluate_without_ties(masked):
+    scores, labels = synthetic(k=40)
+    mask = np.random.default_rng(1).random(scores.shape) < 0.5 if masked else None
+    mask_t = None if mask is None else torch.from_numpy(mask)
+    fast = metrics.macro_auprc_torch(torch.from_numpy(scores), torch.from_numpy(labels), mask_t, chunk=16)
+    assert fast == pytest.approx(metrics.evaluate(scores, labels, mask)["macro_auprc"], rel=1e-5)
 
 
 # --- AP@50 (Decagon's apk, hand-checked) ---
