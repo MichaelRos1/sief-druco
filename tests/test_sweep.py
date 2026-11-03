@@ -28,7 +28,8 @@ def fake_run(calls, kill_at=None, fail=()):
         out.mkdir(parents=True, exist_ok=True)
         (out / "config.json").write_text("{}")
         if len(calls) == kill_at:
-            raise Killed  # mid-run: config.json written, metrics.json not
+            (out / "metrics.json.tmp").write_text('{"seco')  # killed while writing it
+            raise Killed
         if config in fail:
             raise RuntimeError("MPS out of memory")
         (out / "metrics.json").write_text(json.dumps({"seconds": 60.0}))
@@ -51,7 +52,7 @@ def test_a_killed_sweep_restarts_with_the_remaining_runs(tmp_path):
     assert failed == []
     assert lines[0] == "6 runs: 2 done, 4 to run"
     assert lines[1].endswith("ETA 0h04m")  # 4 runs left at the 60 s of the done ones
-    assert all(sweep.is_done(c, tmp_path) for c in CONFIGS)
+    assert all(c.is_done(tmp_path) for c in CONFIGS)
 
     calls = []
     sweep.run_sweep(CONFIGS, tmp_path, data="unused", run=fake_run(calls), log=lambda _: None)
@@ -102,6 +103,19 @@ def test_tuning_covers_the_grid_without_d_for_the_additive_models(monkeypatch):
     assert all(per_model[m] == 4 for m in sweep.NO_D)
 
 
+def test_the_ablation_tables_pair_each_run_with_the_same_gnn_in_stage_b(monkeypatch):
+    monkeypatch.setattr(sweep, "DECODER", "decagon")
+    monkeypatch.setattr(sweep, "LOSS_WEIGHTS", "none")
+    monkeypatch.setattr(sweep, "TUNED", {m: {"d": 32} for m in (*sweep.ENCODERS, *sweep.BASELINES)})
+    monkeypatch.setattr(sweep, "BEST_GNN", "sage")
+    tabled = sweep.ablation_tables()
+    stage_b = {c.run_dir() for c in sweep.stage_b()}
+    without = [c for c in tabled if not c.proteins]
+    assert without == sweep.ablation()
+    assert {c.run_dir() for c in tabled if c.proteins} <= stage_b
+    assert len(tabled) == 2 * len(without)
+
+
 def test_later_stages_refuse_to_run_before_their_choices_are_filled_in():
     for stage in (sweep.tuning, sweep.stage_b, sweep.ablation):
         with pytest.raises(ValueError, match="#37|#39"):
@@ -143,6 +157,30 @@ def test_paired_differences_use_matching_fold_and_seed_only():
 def test_paired_differences_never_cross_splits():
     runs = pd.concat([runs_frame([("a", 0, 0, 0.3)]), runs_frame([("b", 0, 0, 0.2)]).assign(split="random")])
     assert results.paired(runs).empty
+
+
+def write_fake_run(config, runs_dir, val):
+    out = config.run_dir(runs_dir)
+    out.mkdir(parents=True)
+    (out / "config.json").write_text(json.dumps(
+        {"name": config.name, "git_commit": "abc1234", "git_dirty": False, "sampling": "full rows"}))
+    (out / "metrics.json").write_text(json.dumps(
+        {"best_epoch": 10, "seconds": 60.0, "val_macro_auprc": val, "test": {"test": {"macro_auprc": val}}}))
+
+
+def test_the_reference_model_is_the_pair_level_winner_on_every_split(tmp_path):
+    vals = {("pair", "decagon"): 0.3, ("pair", "mlp"): 0.2,
+            ("random", "decagon"): 0.5, ("random", "mlp"): 0.6,  # mlp wins here, not on pair-level
+            ("cold_drug", "mlp"): 0.1}  # the reference doesn't run here
+    configs = [Config(split, 0, seed, decoder=dec) for split, dec in vals for seed in (0, 1)]
+    for c in configs:
+        write_fake_run(c, tmp_path / "runs", vals[c.split, c.decoder])
+    md = (results.write(configs, tmp_path / "results", tmp_path / "runs") / "results.md").read_text()
+    sections = dict(part.split("\n", 1) for part in md.split("## ")[1:])
+    decagon = Config("pair", 0, 0).name
+    assert f"Paired difference to `{decagon}` (highest mean pair-level" in sections["pair"]
+    assert f"Paired difference to `{decagon}` (highest mean pair-level" in sections["random"]
+    assert "Paired difference" not in sections["cold_drug"]  # one model: nothing to pair with
 
 
 # --- End to end on the real dataset ---

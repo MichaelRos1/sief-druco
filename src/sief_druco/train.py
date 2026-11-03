@@ -71,8 +71,16 @@ class Config:
             parts.append("noprot")
         return "_".join(parts)
 
+    @property
+    def label(self) -> str:
+        return f"{self.split} fold{self.fold} seed{self.seed} {self.name}"
+
     def run_dir(self, runs_dir: Path = RUNS_DIR) -> Path:
         return runs_dir / self.split / f"fold{self.fold}" / f"seed{self.seed}" / self.name
+
+    def is_done(self, runs_dir: Path = RUNS_DIR) -> bool:
+        """A run is done once its `metrics.json` exists: `_write` puts it in place last."""
+        return (self.run_dir(runs_dir) / "metrics.json").exists()
 
 
 # --- One step and scoring ---
@@ -332,8 +340,11 @@ def _write(config, runs_dir, model, log, arrays, summary, device) -> None:
         writer.writerows(log)
     torch.save(model.state_dict(), out / "weights.pt")
     np.savez_compressed(out / "metrics.npz", **arrays)
-    # Last: the run counts as done once this exists.
-    (out / "metrics.json").write_text(json.dumps(summary, indent=2) + "\n")
+    # Last, and whole: the run counts as done once this exists, so a kill mid-write must
+    # leave no truncated file behind.
+    tmp = out / "metrics.json.tmp"
+    tmp.write_text(json.dumps(summary, indent=2) + "\n")
+    tmp.replace(out / "metrics.json")
 
 
 def main(argv=None) -> None:

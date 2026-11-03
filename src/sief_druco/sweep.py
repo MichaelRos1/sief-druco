@@ -20,6 +20,7 @@ import json
 import sys
 import time
 import traceback
+from dataclasses import replace
 from pathlib import Path
 
 from sief_druco import decagon, results, splits, train
@@ -102,15 +103,18 @@ def ablation() -> list[Config]:
             for split in splits.SPLITS for fold in FOLDS for seed in SEEDS]
 
 
+def ablation_tables() -> list[Config]:
+    """The ablation's runs next to the same GNN's Stage B runs, so the tables pair them (§4.3)."""
+    runs = ablation()
+    return runs + [replace(c, proteins=True) for c in runs]
+
+
 SWEEPS = {"smoke": smoke, "stage_a": stage_a, "tuning": tuning, "stage_b": stage_b,
           "ablation": ablation}
+TABLES = {"ablation": ablation_tables}  # runs a sweep's tables cover, if more than its own
 
 
 # --- Running ---
-
-
-def is_done(config: Config, runs_dir: Path = train.RUNS_DIR) -> bool:
-    return (config.run_dir(runs_dir) / "metrics.json").exists()
 
 
 def _duration(seconds: float) -> str:
@@ -127,17 +131,16 @@ def run_sweep(configs: list[Config], runs_dir: Path = train.RUNS_DIR, data=None,
     """
     for config in configs:
         train.check(config)
-    todo = [c for c in configs if not is_done(c, runs_dir)]
+    todo = [c for c in configs if not c.is_done(runs_dir)]
     seconds = [json.loads((c.run_dir(runs_dir) / "metrics.json").read_text())["seconds"]
-               for c in configs if is_done(c, runs_dir)]
+               for c in configs if c.is_done(runs_dir)]
     log(f"{len(configs)} runs: {len(configs) - len(todo)} done, {len(todo)} to run")
     if todo and data is None:
         data = decagon.load()
     failed = []
     for i, config in enumerate(todo):
         eta = f", ETA {_duration(sum(seconds) / len(seconds) * (len(todo) - i))}" if seconds else ""
-        log(f"[{i + 1}/{len(todo)}] {config.split} fold{config.fold} seed{config.seed} "
-            f"{config.name}{eta}")
+        log(f"[{i + 1}/{len(todo)}] {config.label}{eta}")
         started = time.time()
         try:
             run(config, data, runs_dir=runs_dir)
@@ -147,7 +150,7 @@ def run_sweep(configs: list[Config], runs_dir: Path = train.RUNS_DIR, data=None,
             continue
         seconds.append(time.time() - started)
     for config in failed:
-        log(f"failed: {config.split} fold{config.fold} seed{config.seed} {config.name}")
+        log(f"failed: {config.label}")
     return failed
 
 
@@ -160,11 +163,12 @@ def main(argv=None) -> None:
     configs = SWEEPS[args.sweep]()
     if args.dry_run:
         for c in configs:
-            print(f"{'done' if is_done(c) else '    '}  {c.split} fold{c.fold} seed{c.seed} {c.name}")
-        print(f"{len(configs)} runs, {sum(map(is_done, configs))} done")
+            print(f"{'done' if c.is_done() else '    '}  {c.label}")
+        print(f"{len(configs)} runs, {sum(c.is_done() for c in configs)} done")
         return
     failed = [] if args.tables_only else run_sweep(configs)
-    out = results.write(configs, results.RESULTS_DIR / args.sweep, title=args.sweep)
+    tabled = TABLES[args.sweep]() if args.sweep in TABLES else configs
+    out = results.write(tabled, results.RESULTS_DIR / args.sweep, title=args.sweep)
     print(f"tables in {out}")
     sys.exit(1 if failed else 0)
 

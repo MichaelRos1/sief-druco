@@ -9,8 +9,9 @@ Spec: `docs/spec-model.md` §7 (uncertainty, subgroups), §8 (repeats), §6 (pai
 - `paired.csv`: per split, each model against each other one, run by run: only runs with
   the same fold and seed are paired; mean and SD of the difference, and how often the first
   model is ahead.
-- `results.md`: the above per split, with each model's paired difference to the split's
-  reference model (the highest mean validation macro AUPRC).
+- `results.md`: the above per split, with each model's paired difference to the reference
+  model: the highest mean pair-level validation macro AUPRC, since models are selected on
+  pair-level (§7). A split the reference doesn't run on uses its own best instead.
 
 A model is a config without its split, fold and seed: `Config.name`.
 """
@@ -64,9 +65,9 @@ def run_rows(configs, runs_dir: Path) -> pd.DataFrame:
     """One row per finished run among `configs`; runs not done yet are left out."""
     rows = []
     for config in configs:
-        out = config.run_dir(runs_dir)
-        if not (out / "metrics.json").exists():
+        if not config.is_done(runs_dir):
             continue
+        out = config.run_dir(runs_dir)
         meta = json.loads((out / "config.json").read_text())
         summary = json.loads((out / "metrics.json").read_text())
         test = summary.pop("test")
@@ -126,7 +127,12 @@ def _pm(mean: float, sd: float, digits: int) -> str:
     return f"{mean:.{digits}f}" if np.isnan(sd) else f"{mean:.{digits}f} ± {sd:.{digits}f}"
 
 
-def _split_md(split: str, runs: pd.DataFrame, summ: pd.DataFrame, pairs: pd.DataFrame) -> str:
+def _best(summ: pd.DataFrame) -> str:
+    return summ.loc[summ[f"{SELECTION}_mean"].idxmax(), "model"]
+
+
+def _split_md(split: str, runs: pd.DataFrame, summ: pd.DataFrame, pairs: pd.DataFrame,
+              reference: str | None) -> str:
     runs, summ, pairs = (t[t["split"] == split] for t in (runs, summ, pairs))
     shown = {c: label for c, label in METRICS.items() if c in runs and runs[c].notna().any()}
     table = pd.DataFrame({"model": summ["model"], "runs": summ[f"{SELECTION}_n"]})
@@ -135,7 +141,9 @@ def _split_md(split: str, runs: pd.DataFrame, summ: pd.DataFrame, pairs: pd.Data
         table[label] = [_pm(m, s, digits) for m, s in zip(summ[f"{c}_mean"], summ[f"{c}_sd"])]
     parts = [f"## {split}", "Mean ± SD over runs (test rows unless named).", _md(table)]
 
-    reference = summ.loc[summ[f"{SELECTION}_mean"].idxmax(), "model"]
+    chosen = "highest mean pair-level " + METRICS[SELECTION]
+    if reference not in set(summ["model"]):
+        reference, chosen = _best(summ), f"highest mean {METRICS[SELECTION]} on this split"
     vs = pairs[pairs["model_b"] == reference]
     if len(vs):
         diff = pd.DataFrame({"model": vs["model_a"].unique()})
@@ -144,7 +152,7 @@ def _split_md(split: str, runs: pd.DataFrame, summ: pd.DataFrame, pairs: pd.Data
             diff[f"Δ {label}"] = [
                 f"{_pm(d.at[m, 'mean_diff'], d.at[m, 'sd_diff'], 4)} ({d.at[m, 'a_ahead']}/{d.at[m, 'n']})"
                 if m in d.index else "" for m in diff["model"]]
-        parts += [f"Paired difference to `{reference}` (highest mean {METRICS[SELECTION]}): "
+        parts += [f"Paired difference to `{reference}` ({chosen}): "
                   "mean ± SD of model − reference over runs with the same fold and seed "
                   "(runs where the model is ahead / paired runs).", _md(diff)]
 
@@ -174,6 +182,8 @@ def write(configs, out_dir: Path, runs_dir: Path = RUNS_DIR, title: str = "") ->
     commits = ", ".join(f"`{str(c)[:7]}`" + (" (dirty)" if dirty else "") for c, dirty in
                         runs[["git_commit", "git_dirty"]].drop_duplicates().itertuples(index=False))
     header.append(f"Git commits: {commits}. Sampling: {', '.join(runs['sampling'].unique())}.")
-    sections = [_split_md(s, runs, summ, pairs) for s in runs["split"].unique()]
+    pair_level = summ[summ["split"] == "pair"]
+    reference = _best(pair_level) if len(pair_level) else None
+    sections = [_split_md(s, runs, summ, pairs, reference) for s in runs["split"].unique()]
     (out_dir / "results.md").write_text("\n\n".join(header + sections) + "\n")
     return out_dir
