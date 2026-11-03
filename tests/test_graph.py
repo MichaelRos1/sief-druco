@@ -31,7 +31,7 @@ def test_drug_input_keeps_columns_of_two_training_drugs_and_takes_the_mean():
     x = graph.drug_input(mono, np.array([0, 1, 2, 4]))
     assert x.dtype == np.float32
     expected_mean = np.array([[0.5, 0.5], [0.5, 0.5], [1, 0], [1, 0], [0, 0]])
-    expected_n = np.array([2, 2, 1, 1, 0])
+    expected_n = np.array([3, 2, 1, 2, 0])  # all of a drug's side effects, kept or not
     np.testing.assert_allclose(x[:, :2], expected_mean)
     np.testing.assert_allclose(x[:, 2], np.log1p(expected_n), rtol=1e-6)
 

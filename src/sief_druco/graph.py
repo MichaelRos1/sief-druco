@@ -39,14 +39,15 @@ def drug_input(mono: sp.spmatrix, train_drugs: np.ndarray) -> np.ndarray:
     """Float32 `[n_drugs, n_cols + 1]`: the mean of a drug's mono indicators, then `log(1 + n)`.
 
     The columns are the mono side effects of ≥ 2 training drugs (`train_drugs`: indices or
-    a mask). n counts the drug's side effects among those columns, so the mean is exact; a
-    drug with none (no profile) gets all zeros.
+    a mask); the mean is over the drug's side effects among them. n counts all of the drug's
+    mono side effects, kept columns or not. A drug with no profile gets all zeros.
     """
     mono = sp.csr_matrix(mono, dtype=np.float32)
     per_column = np.asarray(mono[train_drugs].sum(axis=0)).ravel()
     x = mono[:, per_column >= MIN_MONO_DRUGS].toarray()
-    n = x.sum(axis=1, keepdims=True)
-    mean = np.divide(x, n, out=np.zeros_like(x), where=n > 0)
+    n_kept = x.sum(axis=1, keepdims=True)
+    mean = np.divide(x, n_kept, out=np.zeros_like(x), where=n_kept > 0)
+    n = np.asarray(mono.sum(axis=1), dtype=np.float32)
     return np.hstack([mean, np.log1p(n)])
 
 
