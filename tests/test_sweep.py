@@ -95,12 +95,15 @@ def test_stage_b_runs_every_model_on_the_same_folds_and_seeds(monkeypatch):
     assert all(c.lr == 3e-3 and c.decoder == "decagon" for c in runs)
 
 
-def test_tuning_covers_the_grid_without_d_for_the_additive_models(monkeypatch):
+def test_tuning_covers_only_the_settings_each_model_has(monkeypatch):
     monkeypatch.setattr(sweep, "DECODER", "decagon")
     monkeypatch.setattr(sweep, "LOSS_WEIGHTS", "none")
-    per_model = pd.Series([c.encoder for c in sweep.tuning()]).value_counts()
+    runs = sweep.tuning()
+    per_model = pd.Series([c.encoder for c in runs]).value_counts()
     assert all(per_model[m] == 12 for m in (*sweep.ENCODERS, "tensor_factorisation"))
-    assert all(per_model[m] == 4 for m in sweep.NO_D)
+    assert per_model["additive_mono"] == 4  # no d
+    assert per_model["additive_free"] == 2  # no d, no dropout
+    assert len({c.run_dir() for c in runs}) == len(runs)  # no two runs share a name
 
 
 def test_the_ablation_tables_pair_each_run_with_the_same_gnn_in_stage_b(monkeypatch):

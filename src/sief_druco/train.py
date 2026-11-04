@@ -29,6 +29,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from sief_druco import decagon, metrics, splits
+from sief_druco.baselines import ADDITIVE, BASELINES, FREE_TABLE, NO_DROPOUT
 from sief_druco.decoders import DECODERS
 from sief_druco.encoders import ENCODERS
 from sief_druco.graph import MessageGraphs
@@ -37,6 +38,7 @@ from sief_druco.splits import TEST, TEST_TWO_NEW, TRAIN, VAL
 RUNS_DIR = decagon.LOCAL_DIR / "runs"
 LOSS_WEIGHTS = ("none", "inv_sqrt")  # per side effect: 1, or 1/√n_pos(r) normalised to mean 1
 CHUNK = 8192  # pairs per decoder chunk; doesn't change the result
+MODELS = {**ENCODERS, **BASELINES}  # what `Config.encoder` names
 
 
 @dataclass
@@ -61,8 +63,16 @@ class Config:
 
     @property
     def name(self) -> str:
-        parts = [self.encoder, self.decoder, f"w-{self.loss_weights}", f"d{self.d}",
-                 f"lr{self.lr:g}", f"do{self.dropout:g}"]
+        # Only the settings a model has: the additive baselines have no decoder choice and no d.
+        parts = [self.encoder]
+        if self.encoder not in ADDITIVE:
+            parts.append(self.decoder)
+        parts.append(f"w-{self.loss_weights}")
+        if self.encoder not in ADDITIVE:
+            parts.append(f"d{self.d}")
+        parts.append(f"lr{self.lr:g}")
+        if self.encoder not in NO_DROPOUT:
+            parts.append(f"do{self.dropout:g}")
         defaults = Config(self.split, self.fold, self.seed)
         for key, tag in (("beta", "beta"), ("patience", "pat"), ("max_epochs", "ep")):
             if getattr(self, key) != getattr(defaults, key):
@@ -193,11 +203,30 @@ def _git_commit() -> tuple[str | None, bool]:
 
 
 def check(config: Config) -> None:
-    """Raise ValueError if the config names a split, encoder, decoder or loss weight that doesn't exist."""
-    for value, allowed in ((config.split, splits.SPLITS), (config.encoder, ENCODERS),
+    """Raise ValueError if the config names a split, encoder, decoder or loss weight that
+    doesn't exist, or asks for a setting its model doesn't have."""
+    for value, allowed in ((config.split, splits.SPLITS), (config.encoder, MODELS),
                            (config.decoder, DECODERS), (config.loss_weights, LOSS_WEIGHTS)):
         if value not in allowed:
             raise ValueError(f"unknown setting {value!r}; expected one of {list(allowed)}")
+    if config.split == "cold_drug" and config.encoder in FREE_TABLE:
+        raise ValueError(f"{config.encoder} is not applicable on cold-drug: its free per-drug "
+                         "parameters learn nothing for a new drug (§4.3)")
+    if config.dropout and config.encoder in NO_DROPOUT:
+        raise ValueError(f"{config.encoder} has no dropout")
+
+
+def build(config: Config, graphs: MessageGraphs, base_rate: torch.Tensor) -> nn.ModuleDict:
+    """The model of `config`: its encoder (or baseline) and decoder, on the CPU.
+
+    The additive baselines bring their own decoder; `config.decoder` is unused for them.
+    """
+    Encoder = MODELS[config.encoder]
+    Decoder = getattr(Encoder, "decoder", None) or DECODERS[config.decoder]
+    return nn.ModuleDict({
+        "encoder": Encoder(graphs, config.d, config.dropout),
+        "decoder": Decoder(config.d, base_rate),
+    })
 
 
 def run(config: Config, data=None, runs_dir: Path = RUNS_DIR, device=None) -> dict:
@@ -210,7 +239,7 @@ def run(config: Config, data=None, runs_dir: Path = RUNS_DIR, device=None) -> di
     rng = np.random.default_rng(config.seed)
     started = time.time()
 
-    Encoder = ENCODERS[config.encoder]
+    Encoder = MODELS[config.encoder]
     graphs = MessageGraphs(data, fold, Encoder.drug_edges, Encoder.uses_proteins and config.proteins)
     pairs = torch.from_numpy(data.pairs).to(device)
     labels = torch.from_numpy(data.labels.toarray()).to(device)  # uint8, ~200 MB
@@ -231,10 +260,7 @@ def run(config: Config, data=None, runs_dir: Path = RUNS_DIR, device=None) -> di
         # Start at the sampled base rate, so the corrected model starts at the true one.
         base_rate = torch.sigmoid(torch.logit(base_rate.double()) - shift).float()
 
-    model = nn.ModuleDict({
-        "encoder": Encoder(graphs, config.d, config.dropout),
-        "decoder": DECODERS[config.decoder](config.d, base_rate),
-    }).to(device)
+    model = build(config, graphs, base_rate).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=config.lr)
 
     eval_graph = graphs.eval_graph.to(device)

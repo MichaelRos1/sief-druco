@@ -11,7 +11,8 @@ Spec: `docs/spec-model.md` §7 (uncertainty, subgroups), §8 (repeats), §6 (pai
   model is ahead.
 - `results.md`: the above per split, with each model's paired difference to the reference
   model: the highest mean pair-level validation macro AUPRC, since models are selected on
-  pair-level (§7). A split the reference doesn't run on uses its own best instead.
+  pair-level (§7). A split the reference doesn't run on uses its own best instead. The
+  cold-drug section names the free-table baselines as "not applicable" (§4.3).
 
 A model is a config without its split, fold and seed: `Config.name`.
 """
@@ -24,6 +25,7 @@ import numpy as np
 import pandas as pd
 
 from sief_druco import decagon
+from sief_druco.baselines import FREE_TABLE
 from sief_druco.train import RUNS_DIR
 
 RESULTS_DIR = decagon.LOCAL_DIR / "results"
@@ -132,7 +134,7 @@ def _best(summ: pd.DataFrame) -> str:
 
 
 def _split_md(split: str, runs: pd.DataFrame, summ: pd.DataFrame, pairs: pd.DataFrame,
-              reference: str | None) -> str:
+              reference: str | None, not_applicable: list[str]) -> str:
     runs, summ, pairs = (t[t["split"] == split] for t in (runs, summ, pairs))
     shown = {c: label for c, label in METRICS.items() if c in runs and runs[c].notna().any()}
     table = pd.DataFrame({"model": summ["model"], "runs": summ[f"{SELECTION}_n"]})
@@ -140,6 +142,9 @@ def _split_md(split: str, runs: pd.DataFrame, summ: pd.DataFrame, pairs: pd.Data
         digits = 4 if c in METRICS else (0 if c == "best_epoch" else 1)
         table[label] = [_pm(m, s, digits) for m, s in zip(summ[f"{c}_mean"], summ[f"{c}_sd"])]
     parts = [f"## {split}", "Mean ± SD over runs (test rows unless named).", _md(table)]
+    if split == "cold_drug" and not_applicable:
+        parts.append("Not applicable on cold-drug, not run (free per-drug parameters learn "
+                     "nothing for a new drug): " + ", ".join(f"`{m}`" for m in not_applicable) + ".")
 
     chosen = "highest mean pair-level " + METRICS[SELECTION]
     if reference not in set(summ["model"]):
@@ -184,6 +189,9 @@ def write(configs, out_dir: Path, runs_dir: Path = RUNS_DIR, title: str = "") ->
     header.append(f"Git commits: {commits}. Sampling: {', '.join(runs['sampling'].unique())}.")
     pair_level = summ[summ["split"] == "pair"]
     reference = _best(pair_level) if len(pair_level) else None
-    sections = [_split_md(s, runs, summ, pairs, reference) for s in runs["split"].unique()]
+    not_applicable = list(dict.fromkeys(c.name for c in configs if c.encoder in FREE_TABLE
+                                        and c.is_done(runs_dir)))
+    sections = [_split_md(s, runs, summ, pairs, reference, not_applicable)
+                for s in runs["split"].unique()]
     (out_dir / "results.md").write_text("\n\n".join(header + sections) + "\n")
     return out_dir
