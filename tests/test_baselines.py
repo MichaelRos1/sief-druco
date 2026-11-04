@@ -57,9 +57,10 @@ def test_additive_models_add_the_two_drugs_rows(model):
     net, graph, pairs, _ = tiny(model, "decagon")
     u = net["encoder"].eval()(graph)
     a, b = pairs.T
-    torch.testing.assert_close(train.score(net, graph, pairs), u[a] + u[b] + net["decoder"].b)
+    rows = u[a] + u[b] + net["decoder"].b
+    torch.testing.assert_close(train.score(net, graph, pairs), rows)
     r = torch.randint(N_SIDE_EFFECTS, (len(pairs),))
-    torch.testing.assert_close(net["decoder"].triples(u[a], u[b], r), (u[a] + u[b] + net["decoder"].b)[torch.arange(len(r)), r])
+    torch.testing.assert_close(net["decoder"].triples(u[a], u[b], r), rows[torch.arange(len(r)), r])
 
 
 @pytest.mark.parametrize("model", ADDITIVE)
