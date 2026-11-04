@@ -78,10 +78,9 @@ def dense_adjacency(graph, n_side_effects: int, over_relations: bool = True) -> 
     source, target = torch.cat(edges, 1)
     adjacency = torch.zeros(n_side_effects, n_drugs, n_drugs, device=source.device)
     adjacency[relation, target, source] = 1.0
-    degree = adjacency.sum(2, keepdim=True)  # [n_side_effects, n_drugs, 1]
-    if over_relations:
-        degree *= (degree > 0).sum(0)  # × k_i
-    return adjacency.div_(degree.clamp_(min=1))
+    degree = adjacency.sum(2, keepdim=True)  # deg_r(i): [n_side_effects, n_drugs, 1]
+    divisor = degree * (degree > 0).sum(0) if over_relations else degree  # × k_i
+    return adjacency.div_(divisor.clamp_(min=1))
 
 
 def _mean_messages(x_source, edge_index, n_targets: int, weight) -> torch.Tensor:
@@ -138,9 +137,8 @@ class RGCN(nn.Module):
     Two `DenseRGCNLayer`s (each exactly `RGCNConv`) on the dense adjacency, with one
     deviation: a drug's drug–drug messages are averaged over its relations (`k_i`), where
     RGCN sums them. A drug has neighbours in hundreds of the 963 relations, and Adam moves
-    every basis coefficient by about the learning rate per step, so the plain sum shifts
-    `z` several-fold in one step and diverges at lr 1e-2 (loss 0.098 → 4,125 in two
-    steps); the mean trains stably.
+    every basis coefficient by about the learning rate per step, so the plain sum diverges
+    at lr 1e-2 (spec §4.1); the mean trains stably.
 
     Not `RGCNConv` (11× slower, 11.8 GB) and never `FastRGCNConv` (~51 GB).
     """
@@ -219,6 +217,8 @@ class GAT(_Collapsed):
 
     @staticmethod
     def conv(d: int):
+        if d % GAT_HEADS:
+            raise ValueError(f"GAT needs d divisible by {GAT_HEADS} heads, got d = {d}")
         return GATConv(d, d // GAT_HEADS, heads=GAT_HEADS, add_self_loops=False, residual=True)
 
 

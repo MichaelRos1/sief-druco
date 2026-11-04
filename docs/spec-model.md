@@ -59,7 +59,7 @@ All have 2 layers, ReLU, dropout (tuned), output `z_drug [645, d]`.
 | **None** | `z = Linear(drug input)`; no message passing. Tests whether the graph helps on the same input. |
 | **RGCN** (reference) | Relational GCN over all 966 relations, basis decomposition with **30 shared bases**, mean aggregation, root weight. Implemented as the **dense drug–drug rewrite** (drug–drug relations as a dense `[963, 645, 645]` mean adjacency combined through the bases; protein relations by `index_add_`), not `RGCNConv` (11× slower, 11.8 GB). **One change to RGCN:** a drug's drug–drug messages are averaged over the relations in which it has a neighbour (÷ k_i), not summed. Plain RGCN diverges at lr 1e-2, since a drug has neighbours in hundreds of relations and Adam moves every basis coefficient by about the learning rate per step (loss 0.098 → 4,125 in two steps); with the mean it trains stably (#35). |
 | **GraphSAGE** | Collapsed graph: one drug–drug edge type ("labelled together"), plus PPI and target edges; `SAGEConv` via `to_hetero`. |
-| **GAT** | As GraphSAGE, with `GATConv` (4 heads × d/4), no self-loops (undefined on drug → protein edges) and `residual=True`: the self-term GraphSAGE's root weight gives. Without it a drug with no message edges and no targets, such as a cold-drug test drug, gets the same `z` whatever its input (#35). |
+| **GAT** | As GraphSAGE, with `GATConv` (4 heads × d/4), no self-loops (undefined on drug → protein edges) and `residual=True`: a self-term per incoming edge type, as GraphSAGE's root weights give. Without it a drug with no message edges and no targets, such as a cold-drug test drug, gets the same `z` whatever its input (#35). |
 
 HGT and TIP-style staged propagation are future work (#24).
 
@@ -98,7 +98,7 @@ Every metric is also reported separately for pairs among the **284 drugs with ta
 - **Pair-level and cold-drug:** each epoch, training pairs (labelled and unlabelled) are redrawn into 70% message / 30% supervision. Only labelled message pairs create edges. Only supervision pairs' full rows enter the loss. Validation and test pairs never enter the message graph (in either direction). At validation and test time, the message graph is all training labelled pairs.
 - **Random split:** as Decagon, every training triple is both a message edge and in the loss.
 
-**Measured cost on the M4** (d = 64, 2 layers, pair-level / random epoch, without validation): none 0.8 / 3.4 s; RGCN dense 1.3 / 4.1 s; SAGE 2.1 / 5.4 s; GAT 2.3 / 5.6 s; ≤ 5.6 GB MPS. About 1 s of the collapsed encoders' time is building the collapsed edge index, which can be precomputed. Validation over full rows adds ~0.3 s.
+**Measured cost on the M4** (#35: the package's training loop, d = 64, 2 layers, pair-level / random epoch, without validation, median of 3 epochs): none 0.9 / 3.5 s; RGCN dense 1.4 / 3.9 s; SAGE 1.2 / 3.8 s; GAT 1.3 / 3.9 s; ≤ 4.7 GB MPS (the most the MPS cache held, from an emptied cache). Validation over full rows adds 0.2–0.5 s on pair-level and ~2 s on the random split, where it raises memory to 5.8–8.2 GB (RGCN highest), still below the 12 GB of the sampling switch. The pilot of #8 measured 0.8–2.3 / 3.4–5.6 s; the collapsed edge index it built per epoch now takes ~0.05 s.
 
 **MPS notes (#3):** a minimal `torch` + `torch_geometric` install (no extensions) runs everything; tested on torch 2.15.0 and PyG 2.8.1. GAT needs torch ≥ 2.6 (MPS kernel for `scatter_reduce_` with `amax`). Avoid a sorted `EdgeIndex` / `SparseTensor` for GAT (needs `aten::segment_reduce`, no MPS kernel). Avoid `FastRGCNConv` (~51 GB).
 
@@ -158,7 +158,7 @@ The burden uses the S-regime prediction for every triple of a labelled pair, lab
 | degree-based negative sampling, 1:1 | full rows, no sampling | the sampler never draws 29% of the zeros | #7 |
 | hinge loss (code) / cross-entropy (paper) | plain BCE | probabilities are needed | #7 |
 | decoder without bias | per-side-effect bias `b_r` | full rows are ~97.7% zeros | #8 |
-| encoder sums messages over the side-effect relations | RGCN takes the mean over a drug's relations | the sum over hundreds of relations diverges under Adam at lr 1e-2 | #35 |
+| encoder sums messages over the side-effect relations | RGCN averages a drug's drug–drug messages over its relations (protein messages unchanged) | the sum over hundreds of relations diverges under Adam at lr 1e-2 | #35 |
 | uncalibrated scores | cross-fitted, Platt per side effect | burden multiplies `p` by prevalence | #9 |
 
 ## 11. Not in this spec

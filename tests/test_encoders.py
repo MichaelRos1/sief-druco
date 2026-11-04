@@ -137,3 +137,8 @@ def test_a_drug_with_no_edges_still_sees_its_own_input(name):
     z0 = encoder(g)[lonely]
     g[DRUG].x[lonely] = 1.0
     assert not torch.allclose(encoder(g)[lonely], z0)
+
+
+def test_gat_refuses_d_not_divisible_by_its_heads():
+    with pytest.raises(ValueError, match="divisible"):
+        ENCODERS["gat"](small_graphs("collapsed"), 10, dropout=0.0)
