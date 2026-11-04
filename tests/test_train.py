@@ -1,3 +1,4 @@
+import csv
 import json
 from types import SimpleNamespace
 
@@ -138,3 +139,14 @@ def test_a_short_run_writes_its_files(data, split, tmp_path):
         assert "test_uniform_negatives" in summary["test"]
     if split == "cold_drug":
         assert "micro_auprc" in summary["test"]["test_two_new"]
+
+
+@needs_raw
+@pytest.mark.parametrize("encoder", ("rgcn", "sage", "gat"))
+def test_a_short_run_of_each_gnn_improves_validation(data, encoder, tmp_path):
+    config = train.Config("pair", 0, seed=0, encoder=encoder, max_epochs=8, n_resamples=0)
+    summary = train.run(config, data, runs_dir=tmp_path)
+    with open(config.run_dir(tmp_path) / "log.csv") as f:
+        first = float(next(csv.DictReader(f))["val_macro_auprc"])
+    assert summary["best_epoch"] > 1
+    assert summary["val_macro_auprc"] > first
