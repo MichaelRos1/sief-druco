@@ -24,6 +24,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from sief_druco import decagon, results, splits, train
+from sief_druco.baselines import ADDITIVE, BASELINES, FREE_TABLE, NO_DROPOUT
 from sief_druco.decoders import DECODERS
 from sief_druco.train import Config
 
@@ -32,9 +33,6 @@ SEEDS = (0, 1, 2)  # the same folds and seeds for every model, so runs pair up (
 
 GNNS = ("rgcn", "sage", "gat")
 ENCODERS = ("none", *GNNS)
-BASELINES = ("tensor_factorisation", "additive_free", "additive_mono")  # #36
-FREE_TABLE = ("tensor_factorisation", "additive_free")  # cold-drug: "not applicable", not run
-NO_D = ("additive_free", "additive_mono")  # no embedding size to tune
 GRID = {"lr": (3e-3, 1e-2), "d": (32, 64, 128), "dropout": (0.0, 0.3)}  # tuning, §8 step 2
 
 # --- Choices from earlier stages: fill in by hand once each stage is done ---
@@ -79,7 +77,8 @@ def tuning() -> list[Config]:
     """Every model once over the settings that apply to it, on pair-level fold 0, seed 0."""
     runs = []
     for model in (*ENCODERS, *BASELINES):
-        grid = {k: v for k, v in GRID.items() if not (k == "d" and model in NO_D)}
+        grid = {k: v for k, v in GRID.items()
+                if not (k == "d" and model in ADDITIVE or k == "dropout" and model in NO_DROPOUT)}
         for values in itertools.product(*grid.values()):
             runs.append(Config("pair", 0, SEEDS[0], encoder=model, **_stage_a_choices(),
                                **dict(zip(grid, values))))
