@@ -57,9 +57,9 @@ All have 2 layers, ReLU, dropout (tuned), output `z_drug [645, d]`.
 | Encoder | Definition |
 |---|---|
 | **None** | `z = Linear(drug input)`; no message passing. Tests whether the graph helps on the same input. |
-| **RGCN** (reference) | Relational GCN over all 966 relations, basis decomposition with **30 shared bases**, mean aggregation, root weight. Implemented as the **dense drug–drug rewrite** (drug–drug relations as a dense `[963, 645, 645]` mean adjacency combined through the bases; protein relations by `index_add_`), not `RGCNConv` (11× slower, 11.8 GB). |
+| **RGCN** (reference) | Relational GCN over all 966 relations, basis decomposition with **30 shared bases**, mean aggregation, root weight. Implemented as the **dense drug–drug rewrite** (drug–drug relations as a dense `[963, 645, 645]` mean adjacency combined through the bases; protein relations by `index_add_`), not `RGCNConv` (11× slower, 11.8 GB). **One change to RGCN:** a drug's drug–drug messages are averaged over the relations in which it has a neighbour (÷ k_i), not summed. Plain RGCN diverges at lr 1e-2, since a drug has neighbours in hundreds of relations and Adam moves every basis coefficient by about the learning rate per step (loss 0.098 → 4,125 in two steps); with the mean it trains stably (#35). |
 | **GraphSAGE** | Collapsed graph: one drug–drug edge type ("labelled together"), plus PPI and target edges; `SAGEConv` via `to_hetero`. |
-| **GAT** | As GraphSAGE, with `GATConv` (4 heads × d/4). |
+| **GAT** | As GraphSAGE, with `GATConv` (4 heads × d/4), no self-loops (undefined on drug → protein edges) and `residual=True`: the self-term GraphSAGE's root weight gives. Without it a drug with no message edges and no targets, such as a cold-drug test drug, gets the same `z` whatever its input (#35). |
 
 HGT and TIP-style staged propagation are future work (#24).
 
@@ -158,6 +158,7 @@ The burden uses the S-regime prediction for every triple of a labelled pair, lab
 | degree-based negative sampling, 1:1 | full rows, no sampling | the sampler never draws 29% of the zeros | #7 |
 | hinge loss (code) / cross-entropy (paper) | plain BCE | probabilities are needed | #7 |
 | decoder without bias | per-side-effect bias `b_r` | full rows are ~97.7% zeros | #8 |
+| encoder sums messages over the side-effect relations | RGCN takes the mean over a drug's relations | the sum over hundreds of relations diverges under Adam at lr 1e-2 | #35 |
 | uncalibrated scores | cross-fitted, Platt per side effect | burden multiplies `p` by prevalence | #9 |
 
 ## 11. Not in this spec
