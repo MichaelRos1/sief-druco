@@ -48,12 +48,12 @@ def folds_of(regime, data, seed=0):
 @pytest.mark.parametrize("regime", crossfit.REGIMES)
 def test_run_k_scores_fold_k_validates_on_k_plus_1_and_trains_on_the_rest(regime):
     folds = folds_of(regime, tiny_data())
-    for k in range(crossfit.N_FOLDS):
+    for k in range(crossfit.N_CROSSFIT_FOLDS):
         roles = crossfit.roles(folds, k)
         assert roles.shape == folds.shape
         np.testing.assert_array_equal(roles == TEST, folds == k)
-        np.testing.assert_array_equal(roles == VAL, folds == (k + 1) % crossfit.N_FOLDS)
-        np.testing.assert_array_equal(roles == TRAIN, (folds != k) & (folds != (k + 1) % 10))
+        np.testing.assert_array_equal(roles == VAL, folds == (k + 1) % crossfit.N_CROSSFIT_FOLDS)
+        np.testing.assert_array_equal(roles == TRAIN, (folds != k) & (folds != (k + 1) % crossfit.N_CROSSFIT_FOLDS))
 
 
 @pytest.mark.parametrize("regime", crossfit.REGIMES)
@@ -63,11 +63,11 @@ def test_every_scored_entry_comes_from_the_one_model_that_held_it_out(regime):
     shape = data.labels.shape
     # Fold model k "scores" every entry it is asked for with the value k.
     per_fold = (np.full(crossfit.held_out(folds, k, shape[1]).sum(), k, dtype=np.float32)
-                for k in range(crossfit.N_FOLDS))
+                for k in range(crossfit.N_CROSSFIT_FOLDS))
     oof = crossfit.out_of_fold(folds, per_fold, shape[1])
     scored = ~np.isnan(oof)
     rows, cols = np.nonzero(scored)
-    for k in range(crossfit.N_FOLDS):
+    for k in range(crossfit.N_CROSSFIT_FOLDS):
         is_k = oof[rows, cols] == k
         roles = np.broadcast_to(crossfit.roles(folds, k).reshape(len(folds), -1), shape)
         assert (roles[rows[is_k], cols[is_k]] == TEST).all()  # never TRAIN or VAL there
@@ -80,7 +80,7 @@ def test_every_scored_entry_comes_from_the_one_model_that_held_it_out(regime):
 
 def test_u_folds_split_all_pairs_evenly():
     folds = crossfit.u_folds(1003, np.random.default_rng(0))
-    counts = np.bincount(folds, minlength=crossfit.N_FOLDS)
+    counts = np.bincount(folds, minlength=crossfit.N_CROSSFIT_FOLDS)
     assert counts.sum() == 1003 and counts.max() - counts.min() <= 1
 
 

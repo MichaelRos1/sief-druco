@@ -104,6 +104,11 @@ def sampling_shift(beta: float | None) -> float:
     return 0.0 if beta is None else math.log(beta)
 
 
+def sampling_variant(beta: float | None) -> str:
+    """How a run treats the zeros, as its files record it (§5: each run records its variant)."""
+    return "full rows" if beta is None else f"sampled, beta={beta:g}"
+
+
 def draw_triples(y: torch.Tensor, beta: float, keep: torch.Tensor | None = None) -> torch.Tensor:
     """Sampling switch: mask of every positive and each zero with probability `beta`.
 
@@ -363,7 +368,7 @@ def _write(config, runs_dir, model, log, arrays, summary, device) -> None:
     commit, dirty = _git_commit()
     meta = {**asdict(config), "name": config.name, "git_commit": commit, "git_dirty": dirty,
             "device": device.type, "torch": torch.__version__,
-            "sampling": "full rows" if config.beta is None else f"sampled, beta={config.beta:g}"}
+            "sampling": sampling_variant(config.beta)}
     (out / "config.json").write_text(json.dumps(meta, indent=2) + "\n")
     with open(out / "log.csv", "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(log[0]))

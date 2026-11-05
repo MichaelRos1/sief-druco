@@ -20,7 +20,9 @@ the validation slice: all side effects at once, each by its own mean BCE (LBFGS)
 Everything goes to `local/crossfit/`: the fold assignments in `folds/` (drawn once, as in
 `splits`), and per model `<Config.name>/` with the fold runs (`runs/`, as in `train`), the
 calibrated held-out scores of each fold (`U/fold<k>.npz`, `S/fold<k>.npz`), the hand-off
-files and `report/`. Resumable: a done run or fold file is skipped, so the same command
+files and `report/`. `side_effects.csv` gives each side effect's held-out AUPRC per regime
+as the mean over the 10 fold models (Platt keeps each run's ranking while `a_r > 0`).
+Resumable: a done run or fold file is skipped, so the same command
 finishes the rest. Run with `python -m sief_druco.crossfit` (the model's settings as in
 `train`, e.g. `--max_epochs 10`).
 """
@@ -45,12 +47,14 @@ from sief_druco.train import Config
 
 CROSSFIT_DIR = decagon.LOCAL_DIR / "crossfit"
 REGIMES = {"U": "pair", "S": "random"}  # regime → the split protocol it trains with
-N_FOLDS = 10
+N_CROSSFIT_FOLDS = 10
 FOLD_SEEDS = {"U": 30, "S": 31}  # the splits use 0–2, 10–12 and 20–22
 SEED = 0  # one seed per fold model (#9)
 ALWAYS_TRAIN = -1  # S: the triples of unlabelled pairs, in no fold
 N_BINS = 15  # ECE: equal-count bins
-GROUPS = ("rare", "median", "common")  # terciles of side effects by training positives
+# Terciles of side effects by labelled pairs: one grouping for every run, ranked as by any
+# run's training positives (80% of them).
+GROUPS = ("rare", "median", "common")
 
 # Calibrated probabilities stay strictly inside (0, 1) in float32.
 _LOW = np.finfo(np.float32).tiny
@@ -63,7 +67,7 @@ _HIGH = np.nextafter(np.float32(1), np.float32(0))
 def u_folds(n_pairs: int, rng: np.random.Generator) -> np.ndarray:
     """int8 fold per pair: all pairs dealt into 10 folds in random order."""
     folds = np.empty(n_pairs, dtype=np.int8)
-    folds[rng.permutation(n_pairs)] = np.arange(n_pairs) % N_FOLDS
+    folds[rng.permutation(n_pairs)] = np.arange(n_pairs) % N_CROSSFIT_FOLDS
     return folds
 
 
@@ -81,7 +85,7 @@ def s_folds(labels: sp.spmatrix, rng: np.random.Generator) -> np.ndarray:
         is_pos = np.zeros(n_pairs, dtype=bool)
         is_pos[labels.indices[labels.indptr[r] : labels.indptr[r + 1]]] = True
         for group in (labelled[is_pos[labelled]], labelled[~is_pos[labelled]]):
-            folds[r, rng.permutation(group)] = np.arange(len(group)) % N_FOLDS
+            folds[r, rng.permutation(group)] = np.arange(len(group)) % N_CROSSFIT_FOLDS
     return np.ascontiguousarray(folds.T)
 
 
@@ -102,12 +106,12 @@ def load_folds(regime: str, data, folds_dir: Path) -> np.ndarray:
 def roles(folds: np.ndarray, k: int) -> np.ndarray:
     """Roles of run k: fold k test (scored), fold k + 1 validation, the rest training."""
     out = np.full(folds.shape, TRAIN, dtype=np.uint8)
-    out[folds == (k + 1) % N_FOLDS] = VAL
+    out[folds == (k + 1) % N_CROSSFIT_FOLDS] = VAL
     out[folds == k] = TEST
     return out
 
 
-def fold(regime: str, folds: np.ndarray, k: int) -> splits.Fold:
+def split_fold(regime: str, folds: np.ndarray, k: int) -> splits.Fold:
     """Run k of `regime` as a fold of its split protocol, for `train.run`."""
     return splits.Fold(REGIMES[regime], k, roles(folds, k), None, {"crossfit": regime})
 
@@ -301,13 +305,13 @@ def run(model: dict, data=None, root: Path = CROSSFIT_DIR, device=None, log=prin
     configs = {}
     for regime, split in REGIMES.items():
         folds = load_folds(regime, data, root / "folds")
-        configs[regime] = [replace(template, split=split, fold=k) for k in range(N_FOLDS)]
+        configs[regime] = [replace(template, split=split, fold=k) for k in range(N_CROSSFIT_FOLDS)]
         for k, config in enumerate(configs[regime]):
             path = out / regime / f"fold{k}.npz"
             if path.exists():
                 continue
-            log(f"[{regime} {k + 1}/{N_FOLDS}] {config.label}")
-            f = fold(regime, folds, k)
+            log(f"[{regime} {k + 1}/{N_CROSSFIT_FOLDS}] {config.label}")
+            f = split_fold(regime, folds, k)
             if not config.is_done(runs_dir):
                 train.run(config, data, runs_dir=runs_dir, device=device, fold=f)
             score_fold(config, data, f, runs_dir, path, device)
@@ -318,7 +322,7 @@ def run(model: dict, data=None, root: Path = CROSSFIT_DIR, device=None, log=prin
 
 def _out_of_fold(out: Path, regime: str, folds: np.ndarray, key: str, n_columns: int):
     def values():
-        for k in range(N_FOLDS):
+        for k in range(N_CROSSFIT_FOLDS):
             with np.load(out / regime / f"fold{k}.npz") as z:
                 yield z[key]
     return out_of_fold(folds, values(), n_columns)
@@ -358,9 +362,9 @@ def write_outputs(out: Path, data, root: Path, configs: dict, template: Config) 
         "date": date.today().isoformat(),
         "model": {k: v for k, v in asdict(template).items() if k not in ("split", "fold")},
         "name": template.name,
-        "sampling": "full rows" if template.beta is None else f"sampled, beta={template.beta:g}",
+        "sampling": train.sampling_variant(template.beta),
         "seed": SEED,
-        "folds": N_FOLDS,
+        "folds": N_CROSSFIT_FOLDS,
         "fold_rule": "run k scores fold k, validates on fold k + 1 (wrapping), trains on the rest",
         "fold_seeds": FOLD_SEEDS,
         "regimes": {
