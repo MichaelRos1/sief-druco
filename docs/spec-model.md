@@ -14,7 +14,7 @@ Choices that depend on experiment results (the final encoder, the decoder, hyper
   - `scores.npy`: float32 `[207690, 963]`, calibrated `p_r(a, b)` (~800 MB).
   - `pairs.csv`: `pair_id` (row), `stitch_a`, `stitch_b` (unordered, a < b by index), `labelled`, `regime` (U / S).
   - `labels.npz`: sparse 0/1 `[207690, 963]` in the same row and column order, the training labels after the 963 filter (~4.6M ones). The burden track needs it for "known to Decagon" per triple (spec audit, map #1).
-  - `side_effects.csv`: `cui` (column), `name`, number of labelled pairs, held-out AUPRC per regime, predicted vs observed positives (`9`, reporting).
+  - `side_effects.csv`: `cui` (column), `name`, number of labelled pairs, held-out AUPRC per regime (mean over the 10 fold models), predicted vs observed positives (`9`, reporting).
   - `meta.json`: git commit, model setup, folds, seed, date.
   No live scoring function and no per-score uncertainty. The model never touches NHANES or RxNorm.
 - **Interfaces kept ready for drug sets (#21):** the decoder takes only `(z_a, z_b, r)`; any pair's 963 calibrated probabilities are a lookup in the score table.
@@ -112,6 +112,7 @@ Three splits; every model runs on all three (except where `4.3` says otherwise).
 | **Pair-level** | co-headline and **model selection**; "unseen pair" | All 207,690 unordered pairs (labelled and unlabelled together), each with all 963 labels: 80% train / 10% validation / 10% test. |
 | **Cold-drug** | secondary: memorisation check, forecast for new drugs | Drugs at random: 10% test, a separate 10% validation; the 5 drugs with neither a mono profile nor targets always stay in training. Training = pairs of two training drugs. Scored on **one-new-drug pairs** (macro over 963). Two-new-drug pairs are reported only as a pooled micro average. Validation = pairs of one validation drug and one training drug; pairs of a validation drug with a test drug, or of two validation drugs, are unused (spec audit). |
 
+- **Cross-fitting (§9)** reuses the pair-level and random-split protocols with its own 10 folds; its S regime folds only the labelled pairs' triples, unlike the random split's held-out zeros above.
 - **Repeats:** 3 folds × 3 seeds per model and split, the **same folds and seeds for every model**, so comparisons are paired run by run. Folds are never re-drawn; each fold records its smallest number of test positives per side effect.
 
 ## 7. Evaluation (#6, #7, #8)
@@ -141,10 +142,10 @@ The **final model** is the Stage B winner on pair-level validation macro AUPRC.
 
 1. **Cross-fitting:** the final model, with its tuned settings, is retrained so that no pair is scored by a model that trained on it. One seed per fold model; ~5–7 h.
    - **U regime** (unseen pair) → scores for **unlabelled pairs**: pair-level protocol (with the 70/30 message / supervision redraw), all 207,690 pairs in 10 folds.
-   - **S regime** (seen pair, missing side effect) → scores for **every triple of labelled pairs**: random-split protocol, triples in 10 folds (positives and zeros); the pair's other side effects stay in the message graph.
+   - **S regime** (seen pair, missing side effect) → scores for **every triple of labelled pairs**: random-split protocol, the labelled pairs' triples in 10 folds (positives and zeros, dealt per side effect); the pair's other side effects stay in the message graph. Unlabelled pairs' triples are training zeros in every S run: S scores only labelled pairs, so its validation slice, and with it Platt, holds only their triples (#38).
    - **Folds (spec audit):** run k scores fold k, uses fold k+1 (wrapping around) as the validation slice for early stopping and Platt, and trains on the other 8 folds; the same in both regimes.
 2. **Platt scaling per side effect:** `p = σ(a_r · logit + c_r)`, fitted per fold model and regime on that run's early-stopping validation slice. Plain PyTorch: all 963 side effects at once, minimising BCE (seconds). Not temperature scaling, not isotonic, not a library.
-3. **Reporting** (final model only, per regime, on the held-out folds): reliability diagrams pooled and for rare / median / common side effects (by training positives); ECE with 15 equal-count bins; predicted vs observed number of positives per side effect.
+3. **Reporting** (final model only, per regime, on the held-out folds): reliability diagrams pooled and for rare / median / common side effects (terciles by labelled pairs, which rank like each run's training positives); ECE with 15 equal-count bins; predicted vs observed number of positives per side effect. U is reported on the full rows of all held-out pairs (its unlabelled pairs alone are all zeros), S on the triples of labelled pairs (#38).
 
 The burden uses the S-regime prediction for every triple of a labelled pair, labelled side effects included; labels never replace predictions (#18).
 

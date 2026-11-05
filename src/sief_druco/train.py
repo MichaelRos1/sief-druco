@@ -104,6 +104,11 @@ def sampling_shift(beta: float | None) -> float:
     return 0.0 if beta is None else math.log(beta)
 
 
+def sampling_variant(beta: float | None) -> str:
+    """How a run treats the zeros, as its files record it (§5: each run records its variant)."""
+    return "full rows" if beta is None else f"sampled, beta={beta:g}"
+
+
 def draw_triples(y: torch.Tensor, beta: float, keep: torch.Tensor | None = None) -> torch.Tensor:
     """Sampling switch: mask of every positive and each zero with probability `beta`.
 
@@ -229,12 +234,17 @@ def build(config: Config, graphs: MessageGraphs, base_rate: torch.Tensor) -> nn.
     })
 
 
-def run(config: Config, data=None, runs_dir: Path = RUNS_DIR, device=None) -> dict:
-    """Train one config, keep the best epoch, score its test rows and write the run files."""
+def run(config: Config, data=None, runs_dir: Path = RUNS_DIR, device=None,
+        fold: splits.Fold | None = None) -> dict:
+    """Train one config, keep the best epoch, score its test rows and write the run files.
+
+    `fold` defaults to the saved fold `config.fold` of `config.split`; cross-fitting passes
+    its own (`crossfit`), with roles of the same shape as that split's.
+    """
     check(config)
     device = _device(device)
     data = data if data is not None else decagon.load()
-    fold = splits.load(config.split, config.fold, data)
+    fold = fold if fold is not None else splits.load(config.split, config.fold, data)
     torch.manual_seed(config.seed)
     rng = np.random.default_rng(config.seed)
     started = time.time()
@@ -358,7 +368,7 @@ def _write(config, runs_dir, model, log, arrays, summary, device) -> None:
     commit, dirty = _git_commit()
     meta = {**asdict(config), "name": config.name, "git_commit": commit, "git_dirty": dirty,
             "device": device.type, "torch": torch.__version__,
-            "sampling": "full rows" if config.beta is None else f"sampled, beta={config.beta:g}"}
+            "sampling": sampling_variant(config.beta)}
     (out / "config.json").write_text(json.dumps(meta, indent=2) + "\n")
     with open(out / "log.csv", "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(log[0]))
@@ -373,9 +383,11 @@ def _write(config, runs_dir, model, log, arrays, summary, device) -> None:
     tmp.replace(out / "metrics.json")
 
 
-def main(argv=None) -> None:
-    parser = argparse.ArgumentParser(description="Train and evaluate one run.")
+def add_config_arguments(parser: argparse.ArgumentParser, skip=()) -> None:
+    """One `--<field>` option per `Config` field, except those in `skip`."""
     for f in fields(Config):
+        if f.name in skip:
+            continue
         if f.type is bool:
             kind = lambda s: {"true": True, "false": False}[s.lower()]
         else:
@@ -384,6 +396,11 @@ def main(argv=None) -> None:
             parser.add_argument(f"--{f.name}", type=kind, required=True)
         else:
             parser.add_argument(f"--{f.name}", type=kind, default=f.default)
+
+
+def main(argv=None) -> None:
+    parser = argparse.ArgumentParser(description="Train and evaluate one run.")
+    add_config_arguments(parser)
     summary = run(Config(**vars(parser.parse_args(argv))))
     print(json.dumps({k: v for k, v in summary.items() if k != "test"}, indent=2))
     print(json.dumps(summary["test"]["test"], indent=2))
