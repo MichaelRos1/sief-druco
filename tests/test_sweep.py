@@ -119,7 +119,10 @@ def test_the_ablation_tables_pair_each_run_with_the_same_gnn_in_stage_b(monkeypa
     assert len(tabled) == 2 * len(without)
 
 
-def test_later_stages_refuse_to_run_before_their_choices_are_filled_in():
+def test_later_stages_refuse_to_run_before_their_choices_are_filled_in(monkeypatch):
+    for name, empty in (("DECODER", None), ("LOSS_WEIGHTS", None), ("TUNED", {}),
+                        ("BEST_GNN", None)):
+        monkeypatch.setattr(sweep, name, empty)
     for stage in (sweep.tuning, sweep.stage_b, sweep.ablation):
         with pytest.raises(ValueError, match="#37|#39"):
             stage()
