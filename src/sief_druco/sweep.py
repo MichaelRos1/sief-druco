@@ -37,8 +37,8 @@ GRID = {"lr": (3e-3, 1e-2), "d": (32, 64, 128), "dropout": (0.0, 0.3)}  # tuning
 
 # --- Choices from earlier stages: fill in by hand once each stage is done ---
 
-DECODER: str | None = None  # Stage A (#37)
-LOSS_WEIGHTS: str | None = None  # Stage A (#37)
+DECODER: str | None = "mlp"  # Stage A (#37): MLP head, best pair-level val macro AUPRC
+LOSS_WEIGHTS: str | None = "none"  # Stage A (#37): 1/√n_pos did not help
 TUNED: dict[str, dict] = {}  # tuning (#39): model → {"lr": …, "d": …, "dropout": …}
 BEST_GNN: str | None = None  # Stage B winner among the GNNs (#39), for the ablation
 

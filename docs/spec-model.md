@@ -69,9 +69,9 @@ All take only `(z_a, z_b)` and return 963 logits, and all add a **per-side-effec
 
 | Decoder | Logit for side effect r |
 |---|---|
-| **Decagon** (default) | `z_aᵀ D_r R D_r z_b + b_r`, D_r diagonal ([963, d]), R shared [d, d] and made symmetric as `(R₀ + R₀ᵀ) / 2`. Compute as one matmul: `((z_a ⊗ z_b) ⊙ R).flatten(1) @ (D ⊗ D)ᵀ` (8× faster on MPS than broadcasting to `[n, 963, d]`). |
+| **Decagon** | `z_aᵀ D_r R D_r z_b + b_r`, D_r diagonal ([963, d]), R shared [d, d] and made symmetric as `(R₀ + R₀ᵀ) / 2`. Compute as one matmul: `((z_a ⊗ z_b) ⊙ R).flatten(1) @ (D ⊗ D)ᵀ` (8× faster on MPS than broadcasting to `[n, 963, d]`). |
 | **DistMult** | `Σ_k z_a[k] · w_r[k] · z_b[k] + b_r` |
-| **MLP head** | `MLP([z_a + z_b, z_a ⊙ z_b]) → 963`, + `b_r` |
+| **MLP head** (chosen in Stage A, #37) | `MLP([z_a + z_b, z_a ⊙ z_b]) → 963`, + `b_r` |
 
 **Start values** (Decagon decoder): `D_r ~ N(0, 1)`, `R₀ ~ N(0, 1/√d)`. Fixed, not tuned. With 0.1-scale start values the four-factor product has near-zero gradients and training stalls for 30+ epochs.
 
@@ -89,7 +89,7 @@ Every metric is also reported separately for pairs among the **284 drugs with ta
 ## 5. Training (#7, #8)
 
 - **Full rows:** every supervision pair enters the loss with all 963 labels. No negatives are sampled.
-- **Loss:** `BCEWithLogitsLoss`, no `pos_weight`, no focal loss (focal loss only as an ablation if easy zeros swamp training). Per-side-effect weights `{none, 1/√n_pos(r)}` (normalised to mean 1), chosen once in Stage A (`8`) and then fixed for every model.
+- **Loss:** `BCEWithLogitsLoss`, no `pos_weight`, no focal loss (focal loss only as an ablation if easy zeros swamp training). Per-side-effect weights `{none, 1/√n_pos(r)}` (normalised to mean 1), chosen once in Stage A (`8`) and then fixed for every model: **none** (#37).
 - **Optimiser:** full-batch Adam, one encoder pass and one step per epoch. The decoder runs in chunks of pairs; pass its gradient back exactly through a detached `z` (`z.detach().requires_grad_()`, then `z.backward(z_leaf.grad)`).
 - **Early stopping:** on validation macro AUPRC (`7`), patience 30, cap 500 epochs; keep the best epoch's weights.
 - **Sampling switch** (fallback only): zeros drawn uniformly per side effect at one rate β, redrawn every epoch, corrected with `p = β·p_s / (β·p_s − p_s + 1)` before calibration. Use it only if a model exceeds **12 GB MPS or 10 s per epoch**; none of the compared models does. Within a split, all compared models use the same variant; each run records it. Decagon's degree-based sampler is not used (it can never draw 29% of the zeros).
@@ -128,14 +128,14 @@ Three splits; every model runs on all three (except where `4.3` says otherwise).
 
 Run in this order:
 
-1. **Stage A: decoder and loss weights** (~3 h). Decagon vs DistMult vs MLP head, each with encoder None and RGCN, on pair-level, 1 fold × 3 seeds, at default settings (learning rate 1e-2, d = 64, dropout 0). The loss-weight switch `{none, 1/√n_pos}` is tested on encoder None with each of the 3 decoders. Pick both by pair-level validation macro AUPRC. **Also record epochs to convergence** and revisit the budget below.
-2. **Tuning** (~10 h). Each encoder with the chosen decoder, once, on pair-level fold 0, one seed: learning rate {3e-3, 1e-2} × d {32, 64, 128} × dropout {0, 0.3}. Layers fixed at 2. The baselines (tensor factorisation, both additive models) are tuned the same way, once each, over the settings that apply to them (the additive models have no d), so no model wins only by being tuned (spec audit). The winning settings are reused unchanged on the random and cold-drug splits (limitation: cold-drug may prefer more regularisation).
-3. **Stage B: main comparison** (~33 h). The 4 encoders + tensor factorisation + both additive baselines, 3 splits × 3 folds × 3 seeds.
-4. **No-protein ablation** (~7 h). The best GNN from Stage B on drug–drug edges only.
+1. **Stage A: decoder and loss weights** (~3 h). Decagon vs DistMult vs MLP head, each with encoder None and RGCN, on pair-level, 1 fold × 3 seeds, at default settings (learning rate 1e-2, d = 64, dropout 0). The loss-weight switch `{none, 1/√n_pos}` is tested on encoder None with each of the 3 decoders. Pick both by pair-level validation macro AUPRC, each option by its mean over the runs that test it (the decoder over both encoders). Stage A chose the MLP head, which also wins with RGCN alone in every seed, and no loss weights (#37). **Also record epochs to convergence** and revisit the budget below.
+2. **Tuning** (~7 h). Each encoder with the chosen decoder, once, on pair-level fold 0, one seed: learning rate {3e-3, 1e-2} × d {32, 64, 128} × dropout {0, 0.3}. Layers fixed at 2. The baselines (tensor factorisation, both additive models) are tuned the same way, once each, over the settings that apply to them (the additive models have no d), so no model wins only by being tuned (spec audit). The winning settings are reused unchanged on the random and cold-drug splits (limitation: cold-drug may prefer more regularisation).
+3. **Stage B: main comparison** (~23 h). The 4 encoders + tensor factorisation + both additive baselines, 3 splits × 3 folds × 3 seeds.
+4. **No-protein ablation** (~5 h). The best GNN from Stage B on drug–drug edges only.
 
 The **final model** is the Stage B winner on pair-level validation macro AUPRC.
 
-**Budget:** ≈ 50 h of MacBook compute (5–6 nights), assuming ~300 epochs per run (from a pilot stopped at epoch 180, still improving). It scales with that number: 150 epochs → ~25 h, 500 → ~85 h. Cheapest cuts if needed: drop GAT (~11 h), fix d = 64 (~5 h).
+**Budget** (remeasured after Stage A, #37): most Stage A runs were still improving at the 500-epoch cap, so every run is costed at 500 epochs, an upper bound. With the MLP head an epoch (train + validation, d = 64) takes 0.2 / 1.0 / 0.7 / 0.9 s on pair-level for None / RGCN / SAGE / GAT, 1.2–1.9 s on random and 0.2–1.0 s on cold-drug; d = 128 adds ~15–70%. That gives tuning ~7 h, Stage B ~23 h at d = 64 (up to ~6 h more if SAGE and GAT tune to d = 128), the ablation ~5 h (with RGCN, the costliest GNN): 35–41 h in all, under the 50 h planned, so no cut is needed. Stage A itself took 3.3 h, mostly the Decagon-decoder runs (3–4× the MLP head's cost per epoch). Cuts, if ever needed: drop GAT (~7 h), fix d = 64 (~2 h).
 
 ## 9. Calibration and burden scores (#9)
 
