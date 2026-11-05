@@ -141,10 +141,10 @@ The **final model** is the Stage B winner on pair-level validation macro AUPRC.
 
 1. **Cross-fitting:** the final model, with its tuned settings, is retrained so that no pair is scored by a model that trained on it. One seed per fold model; ~5–7 h.
    - **U regime** (unseen pair) → scores for **unlabelled pairs**: pair-level protocol (with the 70/30 message / supervision redraw), all 207,690 pairs in 10 folds.
-   - **S regime** (seen pair, missing side effect) → scores for **every triple of labelled pairs**: random-split protocol, triples in 10 folds (positives and zeros); the pair's other side effects stay in the message graph.
+   - **S regime** (seen pair, missing side effect) → scores for **every triple of labelled pairs**: random-split protocol, the labelled pairs' triples in 10 folds (positives and zeros, dealt per side effect); the pair's other side effects stay in the message graph. Unlabelled pairs' triples are training zeros in every S run: S scores only labelled pairs, so its validation slice, and with it Platt, holds only their triples (#38).
    - **Folds (spec audit):** run k scores fold k, uses fold k+1 (wrapping around) as the validation slice for early stopping and Platt, and trains on the other 8 folds; the same in both regimes.
 2. **Platt scaling per side effect:** `p = σ(a_r · logit + c_r)`, fitted per fold model and regime on that run's early-stopping validation slice. Plain PyTorch: all 963 side effects at once, minimising BCE (seconds). Not temperature scaling, not isotonic, not a library.
-3. **Reporting** (final model only, per regime, on the held-out folds): reliability diagrams pooled and for rare / median / common side effects (by training positives); ECE with 15 equal-count bins; predicted vs observed number of positives per side effect.
+3. **Reporting** (final model only, per regime, on the held-out folds): reliability diagrams pooled and for rare / median / common side effects (terciles by training positives); ECE with 15 equal-count bins; predicted vs observed number of positives per side effect. U is reported on the full rows of all held-out pairs (its unlabelled pairs alone are all zeros), S on the triples of labelled pairs (#38).
 
 The burden uses the S-regime prediction for every triple of a labelled pair, labelled side effects included; labels never replace predictions (#18).
 
