@@ -11,7 +11,7 @@ The repo is public: personal notes and learning files live in the git-ignored `l
 
 ## Tickets
 
-- Issue #28 maps Track 1: sub-issues in build order, linked by blocked-by. Each ticket names its spec sections and adds only acceptance criteria.
+- Issue #28 maps Track 1 and issue #51 maps Track 2: sub-issues in build order, linked by blocked-by. Each ticket names its spec sections and adds only acceptance criteria.
 - One branch per ticket, `<number>-<slug>` from `main`, one PR; commit subjects end with `(#<number>)`. The user merges.
 
 ## Running
