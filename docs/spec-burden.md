@@ -33,7 +33,7 @@ Read from the git-ignored `local/` folder, never recomputed here:
 
 ## 3. Co-prescription data: NHANES (#11, #15)
 
-- **Files:** `RXQ_RX` (one row per drug; `SEQN`, `RXDUSE`, `RXDDRUG`, `RXDDRGID`, ...) and `DEMO` (`SEQN`, `RIDAGEYR`, `RIAGENDR`, weights, `SDMVSTRA`, `SDMVPSU`) per cycle. Non-users have one row with `RXDUSE` = 2.
+- **Files:** `RXQ_RX` (one row per drug; `SEQN`, `RXDUSE`, `RXDDRUG`, `RXDDRGID`, ...) and `DEMO` (`SEQN`, `RIDAGEYR`, `RIAGENDR`, weights, `SDMVSTRA`, `SDMVPSU`) per cycle. Non-users have one row with `RXDUSE` = 2. People with `RXDUSE` 7 or 9 (refused, don't know; 23 of 25,531 in the main pool) stay in the denominators with no drugs, and their count is reported.
 - **Main pool:** NHANES **2015–2016 (`_I`) + 2017–March 2020 pre-pandemic (`P_`)**: 5.2 years, ~10,900 Rx users, middle year ~2017.
   - **Never** 2017–2018 (`_J`) next to `P_`: `P_` already holds those participants under new `SEQN`s.
   - Out: 1999–2002 (retrofitted Multum codes, 4-year weights) and 2021–2023 (no drug names).
@@ -67,7 +67,7 @@ Pilot (NHANES 2017–18, #16): 99.4% of mentions reach an `IN`; 611 of 645 Decag
 Two long tables, the same for NHANES and MEPS:
 
 - **persons:** `source` (NHANES / MEPS), `cycle`, `seqn`, pooled weight, stratum, PSU, age, sex. Key (`source`, `cycle`, `seqn`).
-- **person_drugs:** one row per person × RxNorm `IN`, with `stitch_id` or the reason `not_in_model` / `mapping_failed`.
+- **person_drugs:** one row per person × RxNorm `IN` × `round`, with `stitch_id` or the reason `not_in_model` / `mapping_failed`. `round` is the MEPS purchase round (§11.2) and is empty for NHANES.
 
 Pairs (and later drug sets) are **derived on the fly** from `person_drugs`, never stored as counts:
 - all unordered pairs of distinct `IN`s within a person; covered drugs are de-duplicated **by STITCH ID** first, so two aliases of one Decagon drug (e.g. methylphenidate and dexmethylphenidate) never form a pair (spec audit);
@@ -165,8 +165,9 @@ Every re-run is compared with the main result by **overlap of the top 50 pairs**
 
 **MEPS (light):**
 - Files: PMED HC-178A (2015), HC-188A (2016), HC-197A (2017); **2015–2017 only**, before the spring 2018 questionnaire redesign. ≈ 43,000 person-years with ≥ 2 ingredients.
-- **Co-prescribed = both drugs bought in the same round** (`PURCHRD`; three rounds per calendar year, about 4 months each), counted once per person-year.
+- **Co-prescribed = both drugs bought in the same round** (`PURCHRD`; three rounds per calendar year, about 4 months each), counted once per person-year. Pairs form within a `round` of `person_drugs` (§5).
 - Weights `PERWT15F / 3`, `PERWT16F / 3`, `PERWT17F / 3`. A person present in two years counts as two person-years. **Point estimates only:** MEPS prevalence is used only for the top-50 overlap and is never reported as a finding; no HC-036 linkage, no BRR.
+- **Denominator:** the people on the PMED files, since people with no purchase aren't listed. Unlike §7, this isn't the whole population; it rescales every pair equally, so the top-50 overlap doesn't change.
 - Mapping by `RXDRGNAM` (93% of records reach an `IN`) under §4's rules; masked drugs and unmapped records get `mapping_failed`; coverage reported as in §6. Same `persons` / `person_drugs` tables (`source` = MEPS).
 - Footnote: the documentation counts 4,226–5,496 fewer positive-weight records per year in 2015–2017 than the released files; the released weights are used.
 
