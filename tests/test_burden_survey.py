@@ -116,6 +116,14 @@ def test_korn_graubard_brackets_the_estimate_and_is_wider_than_wald():
     assert hi - lo > 2 * 1.96 * est.se * 0.9
 
 
+def test_korn_graubard_refuses_a_domain_without_degrees_of_freedom():
+    d, y, age = synthetic_survey()
+    # One PSU of one stratum: PSUs - strata = 0.
+    one_psu = (d.stratum == d.stratum[0]) & (d.psu == d.psu[0])
+    with pytest.raises(ValueError, match="degrees of freedom"):
+        survey.mean(d, y, domain=one_psu).korn_graubard()
+
+
 def test_korn_graubard_handles_a_zero_proportion():
     d, y, age = synthetic_survey()
     est = survey.mean(d, np.zeros_like(y))
@@ -156,7 +164,7 @@ R_REFERENCE = {
 def test_estimates_agree_with_r_survey():
     persons = nhanes.load_persons(["J"])
     d = survey.Design.from_persons(persons)
-    any_rx = (persons.rx_use == 1).to_numpy(float)
+    any_rx = (persons.rx_use == nhanes.RX_USE_YES).to_numpy(float)
     age = persons.age.to_numpy(float)
     old = age >= 65
 

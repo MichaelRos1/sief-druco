@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 
 from sief_druco.burden import nhanes, survey
@@ -47,9 +48,9 @@ def main_pool():
 @needs_raw
 def test_main_pool_holds_every_participant(main_pool):
     assert len(main_pool) == 25_531
-    assert (main_pool.rx_use == 1).sum() == 10_873
+    assert (main_pool.rx_use == nhanes.RX_USE_YES).sum() == 10_873
     # Refused / don't know stay in the denominators.
-    assert main_pool.rx_use.isin([7, 9]).sum() == 23
+    assert main_pool.rx_use.isin(nhanes.RX_USE_UNKNOWN).sum() == 23
     assert set(main_pool.columns) >= {
         "source", "cycle", "seqn", "weight", "stratum", "psu", "age", "sex", "rx_use"
     }
@@ -68,12 +69,17 @@ def test_main_pool_strata_do_not_overlap_and_have_two_psus(main_pool):
 
 
 @needs_raw
-def test_main_pool_weights_sum_to_one_population(main_pool):
-    # Each cycle's pooled weights carry its share of the 5.2 years.
-    by_cycle = main_pool.groupby("cycle").weight.sum()
-    total = by_cycle.sum()
-    assert 300e6 < total < 340e6
-    assert by_cycle["I"] / total == pytest.approx(2 / 5.2, abs=0.02)
+def test_main_pool_weights_are_the_raw_interview_weights_times_the_factor(main_pool):
+    for cycle, demo_file, raw_col, factor in [
+        ("I", "DEMO_I", "WTINT2YR", 2 / 5.2),
+        ("P_", "P_DEMO", "WTINTPRP", 3.2 / 5.2),
+    ]:
+        raw = pd.read_sas(nhanes.RAW_DIR / f"{demo_file}.xpt", format="xport")
+        ours = main_pool[main_pool.cycle == cycle].set_index("seqn").weight
+        expected = raw.set_index(raw.SEQN.astype("int64"))[raw_col] * factor
+        pd.testing.assert_series_equal(
+            ours.sort_index(), expected.sort_index(), check_names=False, check_index_type=False
+        )
 
 
 @needs_raw

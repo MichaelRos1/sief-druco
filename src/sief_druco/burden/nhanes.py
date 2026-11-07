@@ -21,9 +21,10 @@ FAERS_ERA_POOL = ("D", "E")
 # and have retrofitted Multum codes; 2021–2023 has no drug names (spec §3).
 YEARS = {c: 2.0 for c in "CDEFGHIJ"} | {"P_": 3.2}
 
-# RXDUSE: any prescription drug in the past 30 days. One value per participant,
-# repeated on each of their drug rows.
-RX_USE_YES, RX_USE_NO, RX_USE_REFUSED, RX_USE_DONT_KNOW = 1, 2, 7, 9
+# RXDUSE: any prescription drug in the past 30 days (1 yes, 2 no, 7 refused,
+# 9 don't know). One value per participant, repeated on each of their drug rows.
+RX_USE_YES = 1
+RX_USE_UNKNOWN = (7, 9)
 
 SEX = {1: "male", 2: "female"}
 
@@ -83,18 +84,18 @@ def load_persons(cycles, raw_dir: Path = RAW_DIR) -> pd.DataFrame:
         if set(rx.SEQN) != set(demo.SEQN):
             raise ValueError(f"cycle {cycle}: DEMO and RXQ_RX hold different participants")
 
-        t = demo.merge(rx, on="SEQN", validate="one_to_one")
+        merged = demo.merge(rx, on="SEQN", validate="one_to_one")
         tables.append(
             pd.DataFrame({
                 "source": "NHANES",
                 "cycle": cycle,
-                "seqn": t.SEQN.astype("int64"),
-                "weight": t[weight_col] * factor,
-                "stratum": t.SDMVSTRA.astype("int64"),
-                "psu": t.SDMVPSU.astype("int64"),
-                "age": t.RIDAGEYR.astype("int64"),
-                "sex": t.RIAGENDR.map(SEX),
-                "rx_use": t.RXDUSE.astype("int64"),
+                "seqn": merged.SEQN.astype("int64"),
+                "weight": merged[weight_col] * factor,
+                "stratum": merged.SDMVSTRA.astype("int64"),
+                "psu": merged.SDMVPSU.astype("int64"),
+                "age": merged.RIDAGEYR.astype("int64"),
+                "sex": merged.RIAGENDR.map(SEX),
+                "rx_use": merged.RXDUSE.astype("int64"),
             })
         )
 

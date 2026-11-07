@@ -111,6 +111,10 @@ class Estimate:
         (t_{n-1} / t_df)^2. With zero variance (p = 0 or 1) the effective sample
         size is the domain's row count.
         """
+        if self.n < 2 or self.df < 1:
+            raise ValueError(
+                f"no interval with {self.n} rows and {self.df} degrees of freedom in the domain"
+            )
         p, var = np.asarray(self.value, float), np.asarray(self.variance, float)
         alpha = 1 - level
         with np.errstate(divide="ignore", invalid="ignore"):
