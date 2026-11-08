@@ -4,8 +4,10 @@ Spec: `docs/spec-burden.md` §4 ("Cache every RxNav / PubChem lookup to disk").
 
 One JSON file per cache under `local/data/cache/`, keyed by the request (the URL,
 plus the form data of a POST). Every answer is stored, HTTP errors too (as
-`{"_status": code}`), so a second run with a full cache sends no request. Only a
-request that kept failing is not stored: it is retried on the next run.
+`{"_status": code}`), so a second run with a full cache sends no request. A
+request that keeps failing (no connection, or 429 / 5xx on every attempt) raises
+`LookupFailed` and is not stored; what was fetched so far is kept, and the next
+run retries it.
 
 `fetch` is injectable, so tests run without the network.
 """
@@ -39,6 +41,10 @@ log = logging.getLogger(__name__)
 
 # fetch(url, form) -> (HTTP status, body). `form` is None for a GET.
 Fetch = Callable[[str, dict | None], tuple[int, str]]
+
+
+class LookupFailed(RuntimeError):
+    """A request got no usable answer after every attempt."""
 
 
 def http_fetch(url: str, form: dict | None) -> tuple[int, str]:
@@ -97,8 +103,9 @@ class Cache:
             if self._unsaved >= SAVE_EVERY:
                 self.save()
             return value
-        log.warning("%s: gave up after %d attempts; not cached", key, ATTEMPTS)
-        return {"_status": "failed"}
+        # Raise rather than return an empty answer: the route would read it as
+        # "nothing found" and list the drug as unmatched with a false reason.
+        raise LookupFailed(f"{key}: no answer after {ATTEMPTS} attempts; rerun to retry")
 
     def save(self) -> None:
         if not self._unsaved and self.path.exists():

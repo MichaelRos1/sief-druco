@@ -299,11 +299,33 @@ def test_the_cache_stores_errors_and_retries_server_failures(tmp_path, monkeypat
     assert reread.get("https://x/b")["_status"] == 404
 
 
-def test_a_request_that_keeps_failing_is_not_cached(tmp_path, monkeypatch):
+@pytest.mark.parametrize("failure", ["status", "connection"])
+def test_a_request_that_keeps_failing_raises_and_is_not_cached(tmp_path, monkeypatch, failure):
     monkeypatch.setattr(lookup.time, "sleep", lambda s: None)
-    cache = lookup.Cache(tmp_path / "c.json", fetch=lambda url, form: (503, "busy"))
-    assert cache.get("https://x/a") == {"_status": "failed"}
+
+    def fetch(url, form):
+        if failure == "connection":
+            raise OSError("connection reset")
+        return 503, "busy"
+
+    cache = lookup.Cache(tmp_path / "c.json", fetch=fetch)
+    with pytest.raises(lookup.LookupFailed):
+        cache.get("https://x/a")
     assert "https://x/a" not in cache.data
+
+
+def test_a_failed_lookup_stops_the_build_instead_of_unmatching_a_drug(tmp_path, monkeypatch):
+    monkeypatch.setattr(lookup.time, "sleep", lambda s: None)
+    api = FakeApi()
+
+    def flaky(url, form):  # PubChem never answers the parent lookup of the unknown drug
+        return (503, "busy") if "cid/9999/cids" in url else api(url, form)
+
+    with pytest.raises(lookup.LookupFailed):
+        dt.build(IDS, PAIRS, tmp_path / "none.csv", tmp_path / "cache", flaky)
+    # What was fetched before the failure is kept, so a rerun resumes.
+    saved = json.loads((tmp_path / "cache" / dt.PUBCHEM_CACHE).read_text())
+    assert any("cid/synonyms" in key for key in saved)
 
 
 # --- The real 645 (raw Decagon files and the lookup cache needed) ---

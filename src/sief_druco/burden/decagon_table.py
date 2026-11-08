@@ -15,10 +15,11 @@ Three layers:
    and `IN` → STITCH ID, where an `IN` claimed by several drugs goes to the one with
    the most labelled pairs, and the collision is kept for a footnote.
 
-Without an override, a drug that reached several `IN`s keeps all of them (as the
-pilot did): the main one is the `IN` whose name the drug's own PubChem names
-confirm (else the lowest RxCUI), the others are aliases tagged `unchecked` until
-#55 rules on them.
+Without an override, a drug that reached several `IN`s keeps all of them
+provisionally (as the pilot did): the main one is the `IN` whose name the drug's
+own PubChem names confirm (else the lowest RxCUI), the others are aliases tagged
+`unchecked`. These are not alias relations under the rule of §4; #55 gives every
+such drug an override, so none is left by the final run (#64).
 """
 
 import re
