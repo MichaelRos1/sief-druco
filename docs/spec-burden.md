@@ -33,7 +33,7 @@ Read from the git-ignored `local/` folder, never recomputed here:
 
 ## 3. Co-prescription data: NHANES (#11, #15)
 
-- **Files:** `RXQ_RX` (one row per drug; `SEQN`, `RXDUSE`, `RXDDRUG`, `RXDDRGID`, ...) and `DEMO` (`SEQN`, `RIDAGEYR`, `RIAGENDR`, weights, `SDMVSTRA`, `SDMVPSU`) per cycle. Non-users have one row with `RXDUSE` = 2. People with `RXDUSE` 7 or 9 (refused, don't know; 23 of 25,531 in the main pool) stay in the denominators with no drugs, and their count is reported.
+- **Files:** `RXQ_RX` (one row per drug; `SEQN`, `RXDUSE`, `RXDDRUG`, `RXDDRGID`, ...) and `DEMO` (`SEQN`, `RIDAGEYR`, `RIAGENDR`, weights, `SDMVSTRA`, `SDMVPSU`) per cycle. Non-users have one row with `RXDUSE` = 2. People with `RXDUSE` 7 or 9 (refused, don't know; 23 of 25,531 in the main pool) stay in the denominators with no drugs, and their count is reported with the coverage (§6).
 - **Main pool:** NHANES **2015–2016 (`_I`) + 2017–March 2020 pre-pandemic (`P_`)**: 5.2 years, ~10,900 Rx users, middle year ~2017.
   - **Never** 2017–2018 (`_J`) next to `P_`: `P_` already holds those participants under new `SEQN`s.
   - Out: 1999–2002 (retrofitted Multum codes, 4-year weights) and 2021–2023 (no drug names).
@@ -66,7 +66,7 @@ Pilot (NHANES 2017–18, #16): 99.4% of mentions reach an `IN`; 611 of 645 Decag
 
 Two long tables, the same for NHANES and MEPS:
 
-- **persons:** `source` (NHANES / MEPS), `cycle`, `seqn`, pooled weight, stratum, PSU, age, sex. Key (`source`, `cycle`, `seqn`).
+- **persons:** `source` (NHANES / MEPS), `cycle`, `seqn`, pooled weight, stratum, PSU, age, sex, `rx_use` (NHANES `RXDUSE`; empty for MEPS). Key (`source`, `cycle`, `seqn`).
 - **person_drugs:** one row per person × RxNorm `IN` × `round`, with `stitch_id` or the reason `not_in_model` / `mapping_failed`. `round` is the MEPS purchase round (§11.2) and is empty for NHANES.
 
 Pairs (and later drug sets) are **derived on the fly** from `person_drugs`, never stored as counts:
