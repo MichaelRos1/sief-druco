@@ -106,3 +106,29 @@ def load_persons(cycles, raw_dir: Path = RAW_DIR) -> pd.DataFrame:
     if persons[["weight", "sex"]].isna().any().any():
         raise ValueError("missing weight or sex")
     return persons
+
+
+def load_drug_rows(cycles, raw_dir: Path = RAW_DIR) -> pd.DataFrame:
+    """One row per reported drug (`RXDUSE` = 1) of the given cycles.
+
+    Columns `source`, `cycle`, `seqn`, `round` (empty: NHANES has none), `code`
+    (`RXDDRGID`, "" for the special names 55555 / 77777 / 99999) and `name`
+    (`RXDDRUG`; multi-ingredient products are joined with `; `), as
+    `person_drugs.build` takes them.
+    """
+    weight_factors(cycles)  # the same checks on the cycle list
+    tables = []
+    for cycle in cycles:
+        rx = _read(_file("RXQ_RX", cycle), raw_dir, ["SEQN", "RXDUSE", "RXDDRGID", "RXDDRUG"])
+        rx = rx[rx.RXDUSE == RX_USE_YES]
+        tables.append(
+            pd.DataFrame({
+                "source": "NHANES",
+                "cycle": cycle,
+                "seqn": rx.SEQN.astype("int64"),
+                "round": pd.array([pd.NA] * len(rx), dtype="Int64"),
+                "code": rx.RXDDRGID.fillna("").str.strip(),
+                "name": rx.RXDDRUG.fillna("").str.strip(),
+            })
+        )
+    return pd.concat(tables, ignore_index=True)
