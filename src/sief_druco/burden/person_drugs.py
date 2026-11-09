@@ -8,8 +8,9 @@ drug × `round`:
 - a drug that reached RxNorm ingredients gives one row per `IN` (`drug` = `in:<rxcui>`),
   with its `stitch_id` (*covered*) or *not in the model*;
 - a drug that reached no `IN` keeps one row with its `cause` (*mapping failed*),
-  because §9 counts it as a drug: one row per failed code (`code:<code>`), and one
-  per record when there is no code at all (`row:<n>`).
+  because §9 counts it as a drug: one row per failed code (`code:<code>`), per
+  failed name when the source has no code (`name:<name>`, MEPS and DDInter), and
+  per record for NHANES's unknown / refused / don't know (`row:<n>`, as the pilot).
 
 `mentions` counts the source records behind each row, so coverage (§6) can count
 mentions after the de-duplication. Nothing is dropped: the table is each person's
@@ -24,7 +25,7 @@ from pathlib import Path
 import pandas as pd
 
 from sief_druco.burden import lookup, nhanes
-from sief_druco.burden.ingredients import Resolution, Resolver
+from sief_druco.burden.ingredients import NO_CODE, Resolution, Resolver
 
 COVERED, NOT_IN_MODEL, MAPPING_FAILED = "covered", "not_in_model", "mapping_failed"
 STATUSES = (COVERED, NOT_IN_MODEL, MAPPING_FAILED)
@@ -37,7 +38,7 @@ COLUMNS = [
     *PERSON, "round", "drug", "rxcui", "in_name", "stitch_id", "status", "cause",
     "code", "name", "mentions",
 ]
-PAIR_COLUMNS = [*PERSON, "unit_a", "unit_b", "status"]
+PAIR_COLUMNS = [*PERSON, "unit_a", "unit_b", "status", "cause_a", "cause_b"]
 
 # resolve(code, name) -> Resolution
 Resolve = Callable[[str, str], Resolution]
@@ -66,7 +67,8 @@ def build(drug_rows: pd.DataFrame, resolve: Resolve, stitch_of: dict[str, str]) 
     t = records.merge(resolved, on=["code", "name"], how="left")
 
     reached = t.rxcui.notna()
-    failed_key = ("code:" + t.code).where(t.code != "", "row:" + t.record.astype(str))
+    by_name = ("name:" + t.name).where(t.cause != NO_CODE, "row:" + t.record.astype(str))
+    failed_key = ("code:" + t.code).where(t.code != "", by_name)
     t["drug"] = ("in:" + t.rxcui).where(reached, failed_key)
     t["stitch_id"] = t.rxcui.map(stitch_of)
     t["status"] = MAPPING_FAILED
@@ -86,14 +88,17 @@ def pairs(person_drugs: pd.DataFrame) -> pd.DataFrame:
     A covered drug's unit is its STITCH ID, so aliases of one Decagon drug never
     pair; other units are the `drug` key. Pairs form within a `round` (MEPS), and a
     pair seen in several rounds counts once. `unit_a` < `unit_b`: for a covered pair
-    both are STITCH IDs, in Decagon's index order. `status`: *covered* if both drugs
-    are covered, *mapping failed* if either failed, else *not in the model*.
+    both are STITCH IDs, in Decagon's index order; otherwise they are `drug` keys of
+    `person_drugs`. `status`: *covered* if both drugs are covered, *mapping failed*
+    if either failed, else *not in the model*. `cause_a` / `cause_b`: each side's
+    failure cause, empty unless that side failed.
     """
     t = person_drugs.assign(
         unit=person_drugs.stitch_id.where(person_drugs.status == COVERED, person_drugs.drug),
         round_key=person_drugs["round"].astype("Int64").fillna(-1),
     )
-    units = t.drop_duplicates([*PERSON, "round_key", "unit"])[[*PERSON, "round_key", "unit", "status"]]
+    units = t.drop_duplicates([*PERSON, "round_key", "unit"])
+    units = units[[*PERSON, "round_key", "unit", "status", "cause"]]
     p = units.merge(units, on=[*PERSON, "round_key"], suffixes=("_a", "_b"))
     p = p[p.unit_a < p.unit_b]
 

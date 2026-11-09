@@ -1,3 +1,4 @@
+import json
 from urllib.parse import quote
 
 import pytest
@@ -61,8 +62,6 @@ def resolver(tmp_path):
 
     def fetch(url, form):
         calls.append(url)
-        import json
-
         return 200, json.dumps(_answer(url))
 
     r = ing.Resolver(lookup.Cache(tmp_path / "rxnav.json", fetch=fetch))

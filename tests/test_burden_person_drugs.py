@@ -1,6 +1,8 @@
 import pandas as pd
 import pytest
 
+from sief_druco import decagon
+from sief_druco.burden import decagon_table
 from sief_druco.burden import ingredients as ing
 from sief_druco.burden import lookup, nhanes
 from sief_druco.burden import person_drugs as pdr
@@ -88,6 +90,14 @@ def test_a_failed_drug_keeps_its_own_row_and_each_uncoded_row_is_one_drug():
     assert t[t.code == "c00049"].mentions.tolist() == [2]
 
 
+def test_a_failed_name_without_a_code_is_one_drug_per_name():
+    name_rows = pd.DataFrame(
+        [dict(source="MEPS", cycle="2016", seqn=1, round=1, code="", name=n) for n in ["XYZ", "XYZ", "QRS"]]
+    )
+    t = pdr.build(name_rows, lambda code, name: _failed(ing.NAME_NOT_FOUND), STITCH_OF)
+    assert t.set_index("drug").mentions.to_dict() == {"name:XYZ": 2, "name:QRS": 1}
+
+
 def test_each_failure_cause_is_kept_apart():
     t = build((1, ["", "c00049", "d_retired", "d_unknown", "d_escit"]))
     by_cause = t.groupby("cause", dropna=False).size().to_dict()
@@ -135,6 +145,12 @@ def test_failed_plus_not_in_model_is_mapping_failed():
     assert p.status.tolist() == [pdr.MAPPING_FAILED]
 
 
+def test_a_pair_keeps_each_sides_cause():
+    p = pairs_of((1, ["d_escit", "d_unknown"]), (2, ["d_metf", "c00049"]), (3, ["d_metf", "d_lisin"]))
+    causes = {r.seqn: {c for c in (r.cause_a, r.cause_b) if pd.notna(c)} for r in p.itertuples()}
+    assert causes == {1: {ing.NAME_NOT_FOUND}, 2: {ing.ACH_CODE}, 3: set()}
+
+
 def test_pair_status_covered_not_in_model_and_failed():
     p = pairs_of((1, ["d_metf", "d_lisin", "d_escit", "d_rosu", "c00049"]))
     counts = p.status.value_counts().to_dict()
@@ -167,11 +183,17 @@ def test_people_without_two_drugs_have_no_pairs():
 
 # --- NHANES 2017–2018 against the pilot (raw files and lookup cache needed) ---
 
-CACHE = lookup.CACHE_DIR / pdr.NHANES_RXNAV_CACHE
+LOCAL_INPUTS = [
+    nhanes.RAW_DIR,
+    decagon.RAW_DIR,
+    lookup.CACHE_DIR / pdr.NHANES_RXNAV_CACHE,
+    lookup.CACHE_DIR / decagon_table.PUBCHEM_CACHE,
+    lookup.CACHE_DIR / decagon_table.RXNAV_CACHE,
+]
 
 needs_local = pytest.mark.skipif(
-    not (nhanes.RAW_DIR.is_dir() and CACHE.exists()),
-    reason="raw NHANES files or the NHANES RxNav cache not in local/",
+    not all(p.exists() for p in LOCAL_INPUTS),
+    reason="raw NHANES / Decagon files or the RxNav / PubChem caches not in local/",
 )
 
 
@@ -181,8 +203,6 @@ def _offline(url, form):
 
 @pytest.fixture(scope="module")
 def nhanes_2017(tmp_path_factory):
-    from sief_druco.burden import decagon_table
-
     no_overrides = tmp_path_factory.mktemp("overrides") / "none.csv"
     table = decagon_table.build(overrides_path=no_overrides, fetch=_offline)
     drugs = pdr.build_nhanes(["J"], table.stitch_of, fetch=_offline)
