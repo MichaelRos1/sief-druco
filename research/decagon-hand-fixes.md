@@ -2,7 +2,7 @@
 
 Research for issue #55, `docs/spec-burden.md` §4 and §11.1. Run on 2026-11-09. The verdicts are in `data/decagon_overrides.csv`. This note records the evidence behind them and the verdicts on name-check hits that need no override row.
 
-**Status:** the user reviewed the side-effect-identified drugs on 2026-11-09 and decided to join all 11 (section 3). The dropped rows are still waiting for review.
+**Status:** reviewed by the user on 2026-11-09 (section 3). All 11 side-effect-identified drugs are joined, and the four judgement calls on dropped rows are approved.
 
 Markers: **[verified: source]** = read from a primary source or a live API call; **[derived]** = computed here from the files and API responses.
 
@@ -25,7 +25,7 @@ Markers: **[verified: source]** = read from a primary source or a live API call;
 
 ## 3. For the user's review
 
-**Dropped `IN`s where the choice of main `IN` is a judgement:**
+**Dropped `IN`s where the choice of main `IN` is a judgement (all four approved by the user, 2026-11-09):**
 - `CID000001065`: SIDER says quinidine, while PubChem's title stereo is quinine's. Kept quinidine.
 - `CID000003003`: SIDER says dexamethasone, while PubChem's title is Celestone, a betamethasone brand. Kept dexamethasone.
 - `CID000000772`: SIDER says "LMWH" and a synonym is Clexane. Kept enoxaparin and dropped heparin, dalteparin and semuloparin.
