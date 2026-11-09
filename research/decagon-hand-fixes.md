@@ -2,7 +2,7 @@
 
 Research for issue #55, `docs/spec-burden.md` §4 and §11.1. Run on 2026-11-09. The verdicts are in `data/decagon_overrides.csv`. This note records the evidence behind them and the verdicts on name-check hits that need no override row.
 
-**Status: proposed, waiting for the user's review** of the *unclear* and *dropped* rows (section 3).
+**Status:** the user reviewed the side-effect-identified drugs on 2026-11-09 and decided to join all 11 (section 3). The dropped rows are still waiting for review.
 
 Markers: **[verified: source]** = read from a primary source or a live API call; **[derived]** = computed here from the files and API responses.
 
@@ -17,9 +17,9 @@ Markers: **[verified: source]** = read from a primary source or a live API call;
 
 ## 2. Result
 
-54 override rows: 30 matched, 10 dropped_in and 14 unmatched. With the overrides, 631 of the 645 drugs reach an `IN`, no `unchecked` alias is left, and 641 `IN`s join a Decagon drug. The only collision is still hydrocortisone (`IN` 5492 → `CID000003640`, 396 labelled pairs, not the butyrate ester `CID000003642`, 26). [derived]
+54 override rows: 41 matched, 10 dropped_in and 3 unmatched. With the overrides, 642 of the 645 drugs reach an `IN`, no `unchecked` alias is left, and 654 `IN`s join a Decagon drug. The only collision is still hydrocortisone (`IN` 5492 → `CID000003640`, 396 labelled pairs, not the butyrate ester `CID000003642`, 26). [derived]
 
-- **Aliases:** 9 racemate-enantiomer, 1 acid/salt (risedronate → risedronic acid) and 1 prodrug (tenofovir → tenofovir disoproxil).
+- **Aliases:** 9 racemate-enantiomer, 2 acid/salt (risedronate → risedronic acid; mycophenolate → mycophenolic acid) and 2 prodrug (tenofovir → tenofovir disoproxil; mycophenolate mofetil → mycophenolic acid).
 - **Footnote, tenofovir:** NHANES and MEPS "tenofovir" (`IN` 117466) joins Decagon's tenofovir disoproxil, because the sources don't separate TDF from TAF.
 - **No epimers or diastereomers are joined:** quinine and quinidine, dexamethasone and betamethasone, doxorubicin and epirubicin, estradiol and alfatradiol, adenosine and vidarabine, mannitol and sorbitol, ursodiol and chenodiol, and the three retinoic acids each keep one `IN`.
 
@@ -31,9 +31,14 @@ Markers: **[verified: source]** = read from a primary source or a live API call;
 - `CID000000772`: SIDER says "LMWH" and a synonym is Clexane. Kept enoxaparin and dropped heparin, dalteparin and semuloparin.
 - `CID000005538`: SIDER says "retinoic" (acid). Kept tretinoin and dropped isotretinoin and alitretinoin.
 
-**Unclear, kept unmatched (the spec's default):** 11 STITCH IDs whose PubChem structure is a fragment, isomer or impurity of a drug, and whose single-drug side effects point to that drug. Joining them would be a call on the drug's identity, not an alias.
+**Identified by side effects, joined (user decision, 2026-11-09):** 11 STITCH IDs whose PubChem structure is a fragment, isomer or impurity of a drug, and whose single-drug side effects point to that drug. None of the 11 structures is a marketed drug. The structure is a slip in how STITCH matched the FAERS drug name to a compound, and the labels behind the ID are reports on the named drug.
 
-| STITCH ID | Structure | Candidate `IN` | Side-effect evidence | Source mentions (NHANES pool / MEPS) |
+- **Why join:** the model's only drug input is the mono side-effect profile (`docs/spec-model.md`, no per-drug embedding), so the profile, not the structure, is what the model knows about the drug. Leaving the IDs unmatched would report montelukast, rosuvastatin, allopurinol and lithium as *not in the model*, though the model has their labels.
+- **Why it isn't a spec exception:** §4's "unclear stays unmatched" is about guessing what a compound is. Here the identity is set by the same evidence the model uses. Each row's `reason` starts with "identity from the Decagon single-drug side effects".
+- **Weakest join:** sucralfate. An aluminium sulfate cluster with ulcer side effects would also fit aluminium hydroxide antacids.
+- **Mycophenolic acid:** joined with mycophenolate mofetil (68149, prodrug) and mycophenolate (265323, the anion of mycophenolate sodium, acid/salt) as aliases.
+
+| STITCH ID | Structure | Joined `IN` | Side-effect evidence | Source mentions (NHANES pool / MEPS) |
 |---|---|---|---|---|
 | `CID005311297` | montelukast minus its thio side chain | montelukast 88249 | allergic granulomatous angiitis | 457 / 8,109 |
 | `CID004475485` | "Rosuvastatin EP Impurity L" (C22H30 vs C22H28) | rosuvastatin 301542 | CPK increased, muscle injury | 320 / 5,346 |
@@ -60,5 +65,5 @@ All 82 hits have a verdict. Those on the 34 + 17 drugs are covered by their over
 
 ## 5. Lithium and hydrocodone (§11.1)
 
-- **Lithium:** no Decagon drug has lithium's structure. The only name hit is lithium aluminum hydride (`CID000028112`), whose side effects point to lithium. It is listed under section 3 for review. [derived]
+- **Lithium:** no Decagon drug has lithium's structure. The only name hit is lithium aluminum hydride (`CID000028112`), whose side effects point to lithium (bipolar I disorder, mania). It is joined to lithium (`IN` 6448, section 3), so lithium is in the model. [derived]
 - **Hydrocodone** (`IN` 5489; NHANES pool 353 mentions, MEPS 15,503): no name hit, and none of the same-connectivity CIDs of PubChem's hydrocodone record (CID 5284569) is among the 645. Hydrocodone is *not in the model*, so gabapentin + hydrocodone can't be a positive control. [verified: PubChem, live 2026-11-09]
