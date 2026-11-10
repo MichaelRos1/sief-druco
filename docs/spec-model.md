@@ -134,7 +134,7 @@ Run in this order:
 3. **Stage B: main comparison** (~23 h). The 4 encoders + tensor factorisation + both additive baselines, 3 splits × 3 folds × 3 seeds.
 4. **No-protein ablation** (~5 h). The best GNN from Stage B on drug–drug edges only.
 
-The **final model** is the Stage B winner on pair-level validation macro AUPRC.
+The **final model** is the Stage B winner on pair-level validation macro AUPRC. Stage B chose the **per-drug additive model with a free table** (lr 1e-2), ahead of tensor factorisation and of the best GNN, GAT, in every paired run; tuning, Stage B and the ablation took 6.1 h, 22.6 h and 3.2 h (#39, results in `docs/results-model.md`).
 
 **Budget** (remeasured after Stage A, #37): most Stage A runs were still improving at the 500-epoch cap, so every run is costed at 500 epochs, an upper bound. With the MLP head an epoch (train + validation, d = 64) takes 0.2 / 1.0 / 0.7 / 0.9 s on pair-level for None / RGCN / SAGE / GAT, 1.2–1.9 s on random and 0.2–1.0 s on cold-drug; d = 128 adds ~15–70%. That gives tuning ~7 h, Stage B ~23 h at d = 64 (up to ~6 h more if SAGE and GAT tune to d = 128), the ablation ~5 h (with RGCN, the costliest GNN): 35–41 h in all, under the 50 h planned, so no cut is needed. Stage A itself took 3.3 h, mostly the Decagon-decoder runs (3–4× the MLP head's cost per epoch). Cuts, if ever needed: drop GAT (~7 h), fix d = 64 (~2 h).
 
