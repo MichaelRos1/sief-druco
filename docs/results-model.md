@@ -4,6 +4,8 @@ Results of the comparison procedure of `docs/spec-model.md` §8, steps 2–4 (#3
 
 **Final model: the per-drug additive model with a free table** (`σ(u_r(a) + u_r(b) + b_r)`, §4.3), the Stage B winner on pair-level validation macro AUPRC (0.326 ± 0.003, ahead of every other model in all 9 paired runs). The best GNN is GAT (0.264).
 
+Commits: the runs record the commits they ran at, `af6cfa2` (Stage B) and `6eefbbe` (ablation), before the branch was rebased onto `main`; on `main` they are `2e03433` and `ecd4789`, with the same model code (the rebase only brought in burden-track files).
+
 ## Tuning
 
 Each model once on pair-level fold 0, seed 0, over learning rate {3e-3, 1e-2} × d {32, 64, 128} × dropout {0, 0.3}, over the settings that apply to it (the additive models have no d; the free table has no dropout). The winner by validation macro AUPRC is used unchanged on all three splits. Code at `fdd0cf8`; 66 runs, 6.1 h.
