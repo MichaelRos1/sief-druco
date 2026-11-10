@@ -48,7 +48,7 @@ TUNED: dict[str, dict] = {  # tuning (#39): best pair-level val macro AUPRC per 
     "additive_free": {"lr": 1e-2},
     "additive_mono": {"lr": 1e-2, "dropout": 0.3},
 }
-BEST_GNN: str | None = None  # Stage B winner among the GNNs (#39), for the ablation
+BEST_GNN: str | None = "gat"  # Stage B (#39): best GNN on pair-level val macro AUPRC, for the ablation
 
 
 def _stage_a_choices() -> dict:
