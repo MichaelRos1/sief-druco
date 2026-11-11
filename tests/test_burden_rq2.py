@@ -231,6 +231,12 @@ def test_2017_18_covered_pairs_match_the_pilot(tmp_path):
     after = out["thresholds"].set_index("min_participants").pairs
     assert after.to_dict() == {0: 9_609, 10: 585, 20: 207, 30: 118}
 
+    # The coverage table without the hand fixes is the pilot's (§6 of the pilot note).
+    c0 = out["coverage_no_overrides"].set_index(["level", "weighted"])
+    assert c0.loc[(cov.PARTICIPANTS, False), pdr.COVERED] == pytest.approx(50.7, abs=0.05)
+    assert c0.loc[(cov.PARTICIPANTS, True), pdr.COVERED] == pytest.approx(47.6, abs=0.05)
+    assert c0.loc[(cov.PERSON_PAIRS, True), pdr.COVERED] == pytest.approx(69.2, abs=0.05)
+
     c = out["coverage"].set_index(["level", "weighted"])
     assert c[list(pdr.STATUSES)].sum(axis=1).to_numpy() == pytest.approx(100)
     assert c.total[(cov.MENTIONS, False)] == 15_560

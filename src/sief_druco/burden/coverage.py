@@ -26,7 +26,9 @@ Decagon drug which itself never reached RxNorm, so the join can't see it.
 
 import pandas as pd
 
-from sief_druco.burden.person_drugs import COVERED, MAPPING_FAILED, NOT_IN_MODEL, PERSON, STATUSES
+from sief_druco.burden.person_drugs import (
+    COVERED, MAPPING_FAILED, NOT_IN_MODEL, PERSON, STATUSES, UNCODED_PREFIX,
+)
 
 DECAGON_UNMATCHED = "decagon_unmatched"
 SOURCE, DECAGON = "source", "decagon"
@@ -34,8 +36,6 @@ SOURCE, DECAGON = "source", "decagon"
 INGREDIENTS, MENTIONS, PARTICIPANTS, PERSON_PAIRS = "ingredients", "mentions", "participants", "person_pairs"
 LEVELS = (INGREDIENTS, MENTIONS, PARTICIPANTS, PERSON_PAIRS)
 TABLE_COLUMNS = ["level", "weighted", "total", *STATUSES]
-
-UNCODED_PREFIX = "row:"  # person_drugs key of an NHANES unknown / refused / don't know row
 
 
 def mark_decagon_failures(person_drugs: pd.DataFrame, rxcuis) -> pd.DataFrame:

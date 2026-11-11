@@ -20,8 +20,7 @@ import pandas as pd
 import scipy.sparse as sp
 
 from sief_druco.burden import survey
-from sief_druco.burden.coverage import UNCODED_PREFIX
-from sief_druco.burden.person_drugs import COVERED, PERSON
+from sief_druco.burden.person_drugs import COVERED, PERSON, UNCODED_PREFIX
 
 PER = 100_000
 RANK_MIN = 30

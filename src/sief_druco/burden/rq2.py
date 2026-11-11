@@ -7,15 +7,13 @@ writes its tables to `local/data/burden/rq2/<cycles>/` and prints them; the
 aggregate numbers go into `docs/results-burden.md` by hand.
 
 - **coverage**, **failures**: the main table and the supplement of §6.
-- **moved**: what the hand fixes and aliases moved, against the same run without
-  `data/decagon_overrides.csv`.
+- **moved**, **coverage_no_overrides**, **thresholds_no_overrides**: what the hand
+  fixes and aliases moved, against the same run without `data/decagon_overrides.csv`.
 - **prevalence**: every distinct co-prescribed pair, per 100,000 people, with its
   Korn–Graubard interval (person-level data stays in `local/`).
 - **thresholds**: covered pairs passing 10, 20 and 30 participants.
 - **top_all**: the 20 most prevalent pairs among all co-prescribed pairs, with status
-  and, like top_ranked, each cycle's own share.
-- **top_ranked**: the 20 most prevalent ranked pairs (covered, ≥ 30 participants),
-  with each cycle's own share next to the pooled one when the pool has several.
+  and, when the pool has several cycles, each cycle's own share next to the pooled one.
 """
 
 import sys
@@ -73,7 +71,7 @@ def decagon_failures(
 
 def exposure(
     cycles,
-    overrides_path: Path = dt.OVERRIDES_PATH,
+    overrides_path: Path | None = dt.OVERRIDES_PATH,
     raw_dir: Path = nhanes.RAW_DIR,
     cache_dir: Path = lookup.CACHE_DIR,
     fetch: lookup.Fetch = lookup.http_fetch,
@@ -127,11 +125,7 @@ def run(
     fetch: lookup.Fetch = lookup.http_fetch,
 ) -> dict[str, pd.DataFrame]:
     e = exposure(cycles, overrides_path, raw_dir, cache_dir, fetch)
-    # The same run without the overrides: a missing file means none (dt.load_overrides).
-    no_overrides = Path(cache_dir) / "no-overrides.csv"
-    if no_overrides.exists():
-        raise FileExistsError(f"{no_overrides} must not exist")
-    before = exposure(cycles, no_overrides, raw_dir, cache_dir, fetch)
+    before = exposure(cycles, None, raw_dir, cache_dir, fetch)  # the same run without the overrides
     aliases = e.table.ingredients.rxcui[e.table.ingredients.role == "alias"]
     moved = cov.moved(before.person_drugs, e.person_drugs, aliases)
     names = unit_names(e.table, e.person_drugs)
@@ -143,6 +137,7 @@ def run(
     }
     out = {
         "coverage": cov.table(e.persons, e.person_drugs, e.pairs),
+        "coverage_no_overrides": cov.table(before.persons, before.person_drugs, before.pairs),
         "failures": cov.failures(e.persons, e.person_drugs),
         "moved": pd.DataFrame(
             [[b, a, m] for (b, a), m in moved["changed"].items()]
@@ -154,7 +149,6 @@ def run(
         "thresholds": prv.thresholds(prev),
         "thresholds_no_overrides": prv.thresholds(prv.pair_prevalence(before.persons, before.pairs)),
         "top_all": per_cycle(e, _named(prev.head(TOP), names)),
-        "top_ranked": per_cycle(e, _named(ranked.head(TOP), names)),
         "collisions": e.table.collisions,
     }
     out_dir = Path(out_dir or OUT_DIR / "_".join(c.rstrip("_") for c in e.cycles))
