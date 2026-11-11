@@ -28,6 +28,7 @@ from sief_druco.burden import lookup, nhanes
 from sief_druco.burden.ingredients import NO_CODE, Resolution, Resolver
 
 COVERED, NOT_IN_MODEL, MAPPING_FAILED = "covered", "not_in_model", "mapping_failed"
+UNCODED_PREFIX = "row:"  # `drug` key of an NHANES unknown / refused / don't know row
 STATUSES = (COVERED, NOT_IN_MODEL, MAPPING_FAILED)
 
 NHANES_RXNAV_CACHE = "rxnav_nhanes.json"
@@ -67,7 +68,7 @@ def build(drug_rows: pd.DataFrame, resolve: Resolve, stitch_of: dict[str, str]) 
     t = records.merge(resolved, on=["code", "name"], how="left")
 
     reached = t.rxcui.notna()
-    by_name = ("name:" + t.name).where(t.cause != NO_CODE, "row:" + t.record.astype(str))
+    by_name = ("name:" + t.name).where(t.cause != NO_CODE, UNCODED_PREFIX + t.record.astype(str))
     failed_key = ("code:" + t.code).where(t.code != "", by_name)
     t["drug"] = ("in:" + t.rxcui).where(reached, failed_key)
     t["stitch_id"] = t.rxcui.map(stitch_of)

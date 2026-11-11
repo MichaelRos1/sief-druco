@@ -281,16 +281,16 @@ def _parse_aliases(text: str, stitch_id: str) -> list[tuple[str, str]]:
     return out
 
 
-def load_overrides(stitch_ids, path: Path = OVERRIDES_PATH) -> pd.DataFrame:
+def load_overrides(stitch_ids, path: Path | None = OVERRIDES_PATH) -> pd.DataFrame:
     """The hand fixes, checked; `aliases` parsed into `[(rxcui, relation), ...]`.
 
     File format (`data/decagon_overrides.csv`): `main_in` is an RxCUI; `aliases` is
     `<rxcui>:<relation>` items joined by `;`, each relation one of `RELATIONS`;
     `verdict` is `matched`, `dropped_in` (some reached `IN`s dropped) or
-    `unmatched` (no `main_in`, no aliases, a `reason`).
+    `unmatched` (no `main_in`, no aliases, a `reason`). `path` None, or a missing
+    file, means no overrides.
     """
-    path = Path(path)
-    if not path.exists():
+    if path is None or not Path(path).exists():
         return pd.DataFrame(columns=OVERRIDE_COLUMNS)
     df = pd.read_csv(path, dtype=str, keep_default_na=False)
     missing = set(OVERRIDE_COLUMNS) - set(df.columns)
@@ -413,7 +413,7 @@ def resolve(
 def build(
     stitch_ids=None,
     pair_counts: pd.Series | None = None,
-    overrides_path: Path = OVERRIDES_PATH,
+    overrides_path: Path | None = OVERRIDES_PATH,
     cache_dir: Path = lookup.CACHE_DIR,
     fetch: lookup.Fetch = lookup.http_fetch,
 ) -> DrugTable:
