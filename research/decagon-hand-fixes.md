@@ -34,7 +34,7 @@ Markers: **[verified: source]** = read from a primary source or a live API call;
 **Identified by side effects, joined (user decision, 2026-11-09):** 11 STITCH IDs whose PubChem structure is a fragment, isomer or impurity of a drug, and whose single-drug side effects point to that drug. None of the 11 structures is a marketed drug. The structure is a slip in how STITCH matched the FAERS drug name to a compound, and the labels behind the ID are reports on the named drug.
 
 - **Why join:** the model's only drug input is the mono side-effect profile (`docs/spec-model.md`, no per-drug embedding), so the profile, not the structure, is what the model knows about the drug. Leaving the IDs unmatched would report montelukast, rosuvastatin, allopurinol and lithium as *not in the model*, though the model has their labels.
-- **Why it isn't a spec exception:** §4's "unclear stays unmatched" is about guessing what a compound is. Here the identity is set by the same evidence the model uses. Each row's `reason` starts with "identity from the Decagon single-drug side effects".
+- **In the spec:** §4 now names these *structure slips* as a rule of their own: the drug the side effects identify is joined when the compound's name or structure points the same way. Each row's `reason` starts with "identity from the Decagon single-drug side effects", and §12 lists the joins as a limitation.
 - **Weakest join:** sucralfate. An aluminium sulfate cluster with ulcer side effects would also fit aluminium hydroxide antacids.
 - **Mycophenolic acid:** joined with mycophenolate mofetil (68149, prodrug) and mycophenolate (265323, the anion of mycophenolate sodium, acid/salt) as aliases.
 
