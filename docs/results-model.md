@@ -1,6 +1,6 @@
-# Model results: tuning, Stage B and the no-protein ablation
+# Model results: tuning, Stage B, the no-protein ablation and the final scores
 
-Results of the comparison procedure of `docs/spec-model.md` §8, steps 2–4 (#39). Stage A (step 1) is in #37; the cross-fitted scores and the calibration report follow in #40. Metrics as in §7: per side effect, macro-averaged over the 963 side effects, on the full held-out rows unless named. All runs use the Stage A choices (MLP-head decoder, no loss weights), 2 layers, at most 500 epochs, early stopping with patience 30 on validation macro AUPRC.
+Results of the comparison procedure of `docs/spec-model.md` §8, steps 2–4 (#39). Stage A (step 1) is in #37; the cross-fitted scores and the calibration report (#40) are in the last section. Metrics as in §7: per side effect, macro-averaged over the 963 side effects, on the full held-out rows unless named. All runs use the Stage A choices (MLP-head decoder, no loss weights), 2 layers, at most 500 epochs, early stopping with patience 30 on validation macro AUPRC.
 
 **Final model: the per-drug additive model with a free table** (`σ(u_r(a) + u_r(b) + b_r)`, §4.3), the Stage B winner on pair-level validation macro AUPRC (0.326 ± 0.003, ahead of every other model in all 9 paired runs). The best GNN is GAT (0.264).
 
@@ -166,3 +166,36 @@ Reference: GAT. Model − reference over the 9 runs with the same fold and seed;
 - **On cold-drug, proteins hurt:** without them GAT gains 0.016 (ahead in 8 of 9 runs), mostly on the drugs with targets (+0.023). For a drug never seen in training, its targets do not carry over what the model learnt for the seen drugs; on this split GAT stops early (best epoch ~160) and the protein graph adds parameters to overfit.
 - **Proteins do not reach the final model.** The additive free table uses no proteins and is ahead of GAT with proteins on the 284 drugs with targets too (pair-level 0.365 vs 0.310). Better target data could narrow the GNNs' gap, but only on the drugs that already have targets and only for a model that is not the final one.
 
+
+## Final scores and calibration
+
+The final model, cross-fitted as in §9 (#40): 10 fold models per regime, seed 0, the Stage B settings (lr 1e-2, no loss weights, at most 500 epochs, patience 30), Platt per side effect on each run's validation slice. The fold models ran at `429fb91` (35 min in all); the report and hand-off files were written at `a5e3077`, which only adds reporting code. The hand-off files of §1 are in `local/crossfit/additive_free_w-none_lr0.01/`; the full report is `report/calibration.json` there.
+
+| regime | val macro AUPRC (10 folds) | best epoch | held-out macro AUPRC | ECE before Platt | ECE after Platt | rare / median / common | Platt `a_r` (median, range) |
+|---|---|---|---|---|---|---|---|
+| U | 0.327–0.335 | 459–500 | 0.331 | 0.0024 | 0.0008 | 0.0003 / 0.0009 / 0.0035 | 1.15 (0.96–1.95) |
+| S | 0.330–0.333 | 1–2 | 0.332 | 0.0552 | 0.0078 | 0.0114 / 0.0086 / 0.0147 | 78 (7–281) |
+
+Held-out macro AUPRC is the mean over side effects of each side effect's mean over the 10 fold models (`side_effects.csv`). ECE: 15 equal-count bins; U on the full rows of all held-out pairs, S on the triples of labelled pairs (§9). All 9,630 fitted `a_r` are positive in both regimes, so Platt keeps every run's ranking.
+
+![Reliability diagrams of the final model](figures/reliability-final-model.png)
+
+### Score table
+
+| rows | pairs | median score | 99th percentile | median score of labelled positives | predicted / observed positives per pair |
+|---|---|---|---|---|---|
+| U (unlabelled pairs) | 144,218 | 0.0004 | 0.090 | – | 5.0 / 0 |
+| S (labelled pairs) | 63,472 | 0.022 | 0.470 | 0.240 | 72.1 / 72.1 |
+
+Predicted vs observed positives per side effect, on the rows each regime reports: the ratio's 5th–95th percentile over side effects is 0.996–1.004 for U (range 0.98–1.02) and 0.976–1.009 for S (range 0.88–1.25).
+
+### Spot check (regime S)
+
+Within each labelled pair, its labelled side effects score above its other side effects: within-pair AUROC 0.853 on average, above 0.5 in every one of the 63,472 pairs. Per side effect, 91% of the labelled positives score above that side effect's median zero (lowest side effect 66%). Known interactions, labelled in Decagon, score near the top of their side effect's column among the labelled pairs: warfarin + aspirin, upper GI bleeding p = 0.29 (base rate 0.07, 100th percentile); warfarin + fluconazole, bleeding p = 0.37 (base rate 0.22, 100th); simvastatin + amiodarone, rhabdomyolysis p = 0.31 (base rate 0.13, 94th); digoxin + amiodarone, bradycardia p = 0.34 (base rate 0.19, 95th). Each pair's own top scores are its drugs' common side effects (hypotension, pain, pneumonia, asthenia), as expected from an additive per-drug model. Script and full output: `local/data/scratch/crossfit-40/`.
+
+### What the calibration shows
+
+- **U is well calibrated across the whole range** (ECE 0.0008, from 0.0024 before Platt). Its Platt slopes are close to 1: the model trained to ~500 epochs and its raw probabilities were already close.
+- **S relies on Platt, as expected from Stage B.** The additive table stops at epoch 1–2 on the random-split protocol, with raw scores close to the base rate (ECE 0.055, under-predicting throughout). Platt stretches them with slopes of 7–281, and lowers ECE sevenfold.
+- **S is well calibrated above p ≈ 0.1 and in its totals, not in the low range.** Triples with p ≥ 0.1 (23% of S triples, 77% of the predicted positives) predict 3.52 M positives against 3.45 M observed. Below that, the bands err in both directions: p in [0.001, 0.03) over-predicts 1.3–1.6×, [0.03, 0.1) under-predicts (0.72×), and the 1.5% of triples below 0.001 hold 4,149 positives against 511 predicted. The errors largely cancel per side effect (above). The large slopes stretch small differences in the epoch-1 logits, so a few labelled positives get extreme scores (minimum 5e-15; 0.09% of positives below 0.001).
+- **U gives unlabelled pairs 5.0 expected side effects per pair, while none are observed by construction.** The free table has no per-pair parameter, so it cannot tell an unlabelled pair from a labelled one with the same drugs; U's calibration holds over all held-out pairs, the labelled ones included (§9).

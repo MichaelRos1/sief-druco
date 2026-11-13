@@ -188,11 +188,11 @@ def ece(p, y, n_bins: int = N_BINS) -> tuple[float, list[dict]]:
 def calibration_report(p, y, n_pos, raw=None) -> tuple[dict, np.ndarray, np.ndarray]:
     """ECE and reliability bins of `p` against `y` `[n, n_side_effects]`, pooled and per
     group of side effects by training positives `n_pos`; predicted and observed positives
-    per side effect. `raw`: the uncalibrated probabilities, for their pooled ECE."""
+    per side effect. `raw`: the uncalibrated probabilities, for their pooled ECE and bins."""
     value, bins = ece(p, y)
     report = {"ece": value, "bins": bins, "groups": {}}
     if raw is not None:
-        report["ece_raw"] = ece(raw, y)[0]
+        report["ece_raw"], report["bins_raw"] = ece(raw, y)
     order = np.argsort(n_pos, kind="stable")
     for name, cols in zip(GROUPS, np.array_split(order, len(GROUPS))):
         value, bins = ece(p[:, cols], y[:, cols])
@@ -200,8 +200,34 @@ def calibration_report(p, y, n_pos, raw=None) -> tuple[dict, np.ndarray, np.ndar
     return report, p.sum(axis=0, dtype=np.float64), y.sum(axis=0, dtype=np.int64)
 
 
+QUANTILES = (0.0, 0.01, 0.25, 0.5, 0.75, 0.99, 1.0)
+
+
+def _quantiles(x) -> dict:
+    return {str(q): float(v) for q, v in zip(QUANTILES, np.quantile(x, QUANTILES))}
+
+
+def platt_summary(a: np.ndarray, c: np.ndarray) -> dict:
+    """The fitted Platt parameters of one regime, `[n_folds, n_side_effects]` each:
+    quantiles, and how many `a_r` are not positive (those would flip a ranking)."""
+    return {"a": _quantiles(a), "c": _quantiles(c), "a_not_positive": int((a <= 0).sum()),
+            "n": int(a.size)}
+
+
+def score_summary(scores: np.ndarray, y: np.ndarray) -> dict:
+    """The score table's rows of one regime against their labels: score quantiles over all
+    triples and over the positive ones, and predicted positives per pair (mean row sum)."""
+    out = {"pairs": len(scores), "all": _quantiles(scores),
+           "mean_predicted_per_pair": float(scores.sum(axis=1, dtype=np.float64).mean()),
+           "mean_observed_per_pair": float(y.sum(axis=1, dtype=np.float64).mean())}
+    if y.any():
+        out["positives"] = _quantiles(scores[y.astype(bool)])
+    return out
+
+
 def plot_reliability(reports: dict, path: Path) -> None:
-    """Reliability diagrams, one panel per regime: pooled and the three groups, log axes."""
+    """Reliability diagrams, one panel per regime: pooled, the three groups and the pooled
+    raw (pre-Platt) probabilities, log axes."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -213,6 +239,10 @@ def plot_reliability(reports: dict, path: Path) -> None:
         for name, curve in curves:
             ax.plot([b["predicted"] for b in curve["bins"]], [b["observed"] for b in curve["bins"]],
                     marker="o", label=f"{name} (ECE {curve['ece']:.4f})")
+        if "bins_raw" in report:
+            ax.plot([b["predicted"] for b in report["bins_raw"]],
+                    [b["observed"] for b in report["bins_raw"]], marker="x", linestyle=":",
+                    color="grey", label=f"pooled, before Platt (ECE {report['ece_raw']:.4f})")
         ends = [1e-4, 1]
         ax.plot(ends, ends, "k--", linewidth=0.8)
         ax.set(xscale="log", yscale="log", xlim=ends, ylim=ends, xlabel="mean predicted p",
@@ -320,12 +350,14 @@ def run(model: dict, data=None, root: Path = CROSSFIT_DIR, device=None, log=prin
     return out
 
 
+def _fold_values(out: Path, regime: str, key: str):
+    for k in range(N_CROSSFIT_FOLDS):
+        with np.load(out / regime / f"fold{k}.npz") as z:
+            yield z[key]
+
+
 def _out_of_fold(out: Path, regime: str, folds: np.ndarray, key: str, n_columns: int):
-    def values():
-        for k in range(N_CROSSFIT_FOLDS):
-            with np.load(out / regime / f"fold{k}.npz") as z:
-                yield z[key]
-    return out_of_fold(folds, values(), n_columns)
+    return out_of_fold(folds, _fold_values(out, regime, key), n_columns)
 
 
 def write_outputs(out: Path, data, root: Path, configs: dict, template: Config) -> None:
@@ -345,12 +377,16 @@ def write_outputs(out: Path, data, root: Path, configs: dict, template: Config) 
         reports[regime], predicted, observed = calibration_report(p[rows[regime]], y, n_pos, raw)
         del raw
         calibrated[regime] = p
+        a, c = (np.stack(list(_fold_values(out, regime, key))) for key in ("a", "c"))
+        reports[regime]["platt"] = platt_summary(a, c)
         auprc = [np.load(c.run_dir(out / "runs") / "metrics.npz")["test_auprc"] for c in configs[regime]]
         side_effects[f"auprc_{regime}"] = np.nanmean(auprc, axis=0)
         side_effects[f"predicted_{regime}"] = predicted
         side_effects[f"observed_{regime}"] = observed
     scores = combine(calibrated["U"], calibrated["S"], labelled)
     del calibrated
+    for regime, rows in (("U", ~labelled), ("S", labelled)):  # the rows each regime serves
+        reports[regime]["score_table"] = score_summary(scores[rows], labels[rows])
 
     runs = {regime: [{"fold": c.fold, **{k: v for k, v in _summary(c, out).items()
                                           if k in ("best_epoch", "epochs", "val_macro_auprc", "seconds")}}
