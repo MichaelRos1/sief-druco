@@ -4,13 +4,14 @@ import pytest
 from scipy import stats
 
 from sief_druco.burden import groups as gr
+from sief_druco import decagon
+from sief_druco.burden import decagon_table as dt
+from sief_druco.burden import handfix, lookup, nhanes, rq2
 from sief_druco.burden import person_drugs as pdr
-from sief_druco.burden import rq2
 from sief_druco.burden import scores as sc
 from sief_druco.burden import survey
 from sief_druco.burden.person_drugs import COVERED, MAPPING_FAILED, NOT_IN_MODEL
-from test_burden_rankings import A, B, C, D, write_table
-from test_burden_rq2 import _offline, needs_local
+from tiny_score_table import A, B, C, D, write_table
 
 # --- 16 persons in two strata of two PSUs, with drug lists in the `person_drugs` format ---
 #
@@ -95,6 +96,25 @@ def test_drug_count_counts_ingredients_not_products():
     # Drugs outside the 645 count, one per drug that never reached an `IN`, and the
     # combination pill of person 6 counts as two ingredients.
     assert gr.drug_count(persons, drugs).tolist() == [2, 3, 5, 2, 0, 1, 2, 0, 10, 0, 2, 3, 10, 5, 3, 5]
+
+
+def test_people_who_refused_or_did_not_know_are_in_the_0_1_group(table):
+    persons, drugs, pairs = tiny()
+    # RXDUSE 7 / 9: no drug rows, but they stay in every denominator (spec §3).
+    refused = pd.DataFrame({
+        "source": "NHANES", "cycle": "J", "seqn": [16, 17], "weight": [3.0, 4.0],
+        "stratum": [0, 1], "psu": [0, 1], "age": [40, 70], "rx_use": [7, 9],
+    })
+    persons = pd.concat([persons, refused], ignore_index=True)
+    assert gr.drug_count(persons, drugs)[-2:].tolist() == [0, 0]
+    b = gr.bands(persons, drugs, pairs, table).set_index(["band_type", "band"])
+    total = WEIGHTS.sum() + 7
+    assert b.loc[("drugs", "0–1"), "population_pct"] == pytest.approx(100 * (5 + 6 + 8 + 10 + 7) / total)
+    assert b.loc[("drugs", "0–1"), "persons"] == 6
+    old = AGE >= 65
+    assert b.loc[("age", "65+"), "burden_per_person"] == pytest.approx(
+        1e5 * (WEIGHTS * PERSON_BURDEN)[old].sum() / (WEIGHTS[old].sum() + 4)
+    )
 
 
 def test_band_edges():
@@ -209,6 +229,25 @@ def test_a_band_with_enough_rankable_pairs_has_no_note(table):
 
 
 # --- NHANES 2017–2018 (raw files and lookup caches needed) ---
+
+LOCAL_INPUTS = [
+    nhanes.RAW_DIR,
+    decagon.RAW_DIR,
+    handfix.SIDER_NAMES,
+    lookup.CACHE_DIR / pdr.NHANES_RXNAV_CACHE,
+    lookup.CACHE_DIR / dt.PUBCHEM_CACHE,
+    lookup.CACHE_DIR / dt.RXNAV_CACHE,
+]
+
+needs_local = pytest.mark.skipif(
+    not all(p.exists() for p in LOCAL_INPUTS),
+    reason="raw NHANES / Decagon / SIDER files or the lookup caches not in local/",
+)
+
+
+def _offline(url, form):
+    raise OSError(f"tests make no network calls: {url}")
+
 
 
 @needs_local

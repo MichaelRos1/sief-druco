@@ -81,19 +81,18 @@ def band_domains(persons: pd.DataFrame, person_drugs: pd.DataFrame) -> dict[tupl
     return {(t, b): labels == b for t, (labels, edges) in by_type.items() for b in edges}
 
 
-def _covered(persons, pairs, table: ScoreTable):
-    """Persons × covered pairs 0/1, the covered pairs, and each pair's Σ_r p_r."""
+def _covered(persons, pairs) -> tuple:
+    """Persons × covered pairs 0/1, and the covered pairs (`unit_a`, `unit_b`)."""
     y, distinct = prv.pair_matrix(persons, pairs)
     covered = (distinct.status == COVERED).to_numpy()
-    distinct = distinct[covered].reset_index(drop=True)
-    rows = table.rows(distinct.unit_a, distinct.unit_b)
-    sum_p = np.asarray(table.scores[rows], dtype=np.float64).sum(axis=1)
-    return y[:, np.flatnonzero(covered)], distinct, sum_p
+    return y[:, np.flatnonzero(covered)], distinct[covered].reset_index(drop=True)
 
 
 def person_burden(persons: pd.DataFrame, pairs: pd.DataFrame, table: ScoreTable) -> tuple[np.ndarray, np.ndarray]:
     """Each person's burden (Σ over their covered pairs of Σ_r p_r) and covered pair count."""
-    y, _, sum_p = _covered(persons, pairs, table)
+    y, distinct = _covered(persons, pairs)
+    rows = table.rows(distinct.unit_a, distinct.unit_b)
+    sum_p = np.asarray(table.scores[rows], dtype=np.float64).sum(axis=1)
     return y @ sum_p, np.asarray(y.sum(axis=1)).astype(int)
 
 
@@ -110,9 +109,8 @@ def bands(
     """(a) and (b) of §9 for every band (`BAND_COLUMNS`), with each band's count of
     rankable pairs and the note its top list gets."""
     design = design or survey.Design.from_persons(persons)
-    y, _, sum_p = _covered(persons, pairs, table)
-    burden = y @ sum_p
-    n_pairs = np.asarray(y.sum(axis=1), dtype=float)
+    burden, n_pairs = person_burden(persons, pairs, table)
+    y, _ = _covered(persons, pairs)  # for each pair's participants within a band
     w = design.weight
     total = w @ burden
     rows = []
