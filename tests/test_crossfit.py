@@ -164,7 +164,27 @@ def test_calibration_report_groups_side_effects_by_training_positives():
     np.testing.assert_allclose(predicted, p.sum(axis=0, dtype=np.float64), rtol=1e-6)
     np.testing.assert_array_equal(observed, y.sum(axis=0))
     assert report["ece"] == pytest.approx(report["ece_raw"])
+    assert report["bins_raw"] == report["bins"]
     assert 0 <= report["ece"] < 0.1
+
+
+def test_platt_summary_counts_the_slopes_that_would_flip_a_ranking():
+    a = np.array([[2.0, 0.5, -0.1], [1.0, 0.0, 3.0]])
+    summary = crossfit.platt_summary(a, np.zeros_like(a))
+    assert summary["a_not_positive"] == 2 and summary["n"] == 6
+    assert summary["a"]["0.0"] == -0.1 and summary["a"]["1.0"] == 3.0
+    assert summary["c"]["0.5"] == 0.0
+
+
+def test_score_summary_compares_predicted_and_observed_positives_per_pair():
+    scores = np.array([[0.1, 0.9], [0.2, 0.4]], dtype=np.float32)
+    y = np.array([[0, 1], [0, 0]], dtype=np.uint8)
+    summary = crossfit.score_summary(scores, y)
+    assert summary["pairs"] == 2
+    assert summary["mean_predicted_per_pair"] == pytest.approx(0.8)
+    assert summary["mean_observed_per_pair"] == 0.5
+    assert summary["positives"]["0.5"] == pytest.approx(0.9)
+    assert "positives" not in crossfit.score_summary(scores, np.zeros_like(y))
 
 
 # --- The hand-off files ---
