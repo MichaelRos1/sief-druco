@@ -154,12 +154,24 @@ def test_side_effects_sum_to_the_total_over_covered_pairs(table):
     assert se.burden.sum() == pytest.approx(pb.burden.sum())
 
 
-def test_a_labelled_pair_uses_its_prediction_not_its_label(table):
-    persons, pairs, pb = burdens(table, min_participants=1)
-    t = rk.triple_burden(pb, table).set_index(["unit_a", "unit_b", "cui"])
-    assert table.labels[[0], [0]][0] == 1  # AB × effect 0 is a label ...
-    assert t.p[(A, B, "C0000000")] == pytest.approx(0.1)  # ... but its p is the prediction
-    assert pb.set_index(["unit_a", "unit_b"]).loc[(A, B), "regime"] == "S"
+def test_a_labelled_pair_uses_its_prediction_not_its_label(table, tmp_path):
+    assert table.labels[[0], [0]][0] == 1  # AB × effect 0 is a label, predicted at 0.1
+    unlabelled = sc.read(write_table(tmp_path / "unlabelled", labels=np.zeros_like(LABELS)))
+    persons, pairs = survey()
+
+    def all_burdens(t):
+        pb = rk.pair_burden(prv.pair_prevalence(persons, pairs), t, min_participants=1)
+        return [
+            pb.burden.to_numpy(),
+            rk.triple_burden(pb, t).burden.to_numpy(),
+            rk.side_effect_burden(persons, pairs, t).burden.to_numpy(),
+        ]
+
+    # Every burden is the same with or without the label: only the prediction counts.
+    for with_label, without in zip(all_burdens(table), all_burdens(unlabelled)):
+        assert with_label == pytest.approx(without)
+    pb = rk.pair_burden(prv.pair_prevalence(persons, pairs), table, min_participants=1).set_index(["unit_a", "unit_b"])
+    assert pb.loc[(A, B), "regime"] == "S" and pb.loc[(A, B), "sum_p"] == pytest.approx(0.6)
 
 
 # --- The reader ---
@@ -174,6 +186,13 @@ def test_reader_finds_rows_in_either_order(table):
 def test_reader_rejects_a_table_of_the_wrong_shape(tmp_path):
     write_table(tmp_path, scores=SCORES[:5])
     with pytest.raises(ValueError, match="scores.npy"):
+        sc.read(tmp_path)
+
+
+def test_reader_rejects_labels_of_the_wrong_shape(tmp_path):
+    write_table(tmp_path)
+    sp.save_npz(tmp_path / "labels.npz", sp.csr_matrix(np.zeros((6, 4), np.uint8)))
+    with pytest.raises(ValueError, match="labels.npz"):
         sc.read(tmp_path)
 
 

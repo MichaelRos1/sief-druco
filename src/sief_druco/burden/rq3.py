@@ -39,8 +39,8 @@ def run(handoff: Path, cycles=nhanes.MAIN_POOL, out_dir: Path | None = None, **e
 
     pairs = rk.pair_burden(prv.pair_prevalence(e.persons, e.pairs, design=design), table)
     out = {
-        "pairs": rq2._named(pairs, names),
-        "triples": rq2._named(rk.triple_burden(pairs, table), names),
+        "pairs": rq2.named(pairs, names),
+        "triples": rq2.named(rk.triple_burden(pairs, table), names),
         "side_effects": rk.side_effect_burden(e.persons, e.pairs, table, design),
     }
     out_dir = Path(out_dir or OUT_DIR / handoff.name / "_".join(c.rstrip("_") for c in e.cycles))

@@ -70,14 +70,17 @@ def triple_burden(pairs: pd.DataFrame, table: ScoreTable) -> pd.DataFrame:
     ranked = pairs[pairs["rank"].notna()].reset_index(drop=True)
     p = np.asarray(table.scores[table.rows(ranked.unit_a, ranked.unit_b)], dtype=np.float64)
     k = p.shape[1]
-    rep = lambda col: np.repeat(ranked[col].to_numpy(), k)  # noqa: E731
+
+    def per_triple(col):  # a pair column repeated for each of its k side effects
+        return np.repeat(ranked[col].to_numpy(), k)
+
     out = pd.DataFrame({
-        "unit_a": rep("unit_a"),
-        "unit_b": rep("unit_b"),
+        "unit_a": per_triple("unit_a"),
+        "unit_b": per_triple("unit_b"),
         "cui": np.tile(table.side_effects.cui.to_numpy(), len(ranked)),
         "side_effect": np.tile(table.side_effects.name.to_numpy(), len(ranked)),
-        "participants": rep("participants"),
-        "pair_rank": rep("rank"),
+        "participants": per_triple("participants"),
+        "pair_rank": per_triple("rank"),
         "p": p.ravel(),
         "burden": (ranked.prevalence.to_numpy()[:, None] * p).ravel(),
         "burden_low": (ranked.ci_low.to_numpy()[:, None] * p).ravel(),

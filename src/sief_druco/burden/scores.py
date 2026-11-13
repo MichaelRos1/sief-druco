@@ -26,6 +26,12 @@ SIDE_EFFECT_COLUMNS = [
 ]
 
 
+def _unordered(a, b) -> pd.MultiIndex:
+    """Pairs of STITCH IDs as (lower, higher), whatever order they come in."""
+    a, b = np.asarray(a, dtype=object), np.asarray(b, dtype=object)
+    return pd.MultiIndex.from_arrays([np.where(a < b, a, b), np.where(a < b, b, a)])
+
+
 @dataclass(frozen=True)
 class ScoreTable:
     scores: np.ndarray  # memory-mapped float32 [pairs, side effects]
@@ -37,9 +43,7 @@ class ScoreTable:
 
     def rows(self, a, b) -> np.ndarray:
         """Score rows of the unordered pairs (`a[i]`, `b[i]`) of STITCH IDs."""
-        a, b = np.asarray(a, dtype=object), np.asarray(b, dtype=object)
-        lo, hi = np.where(a < b, a, b), np.where(a < b, b, a)
-        rows = self._row_of.reindex(pd.MultiIndex.from_arrays([lo, hi]))
+        rows = self._row_of.reindex(_unordered(a, b))
         if rows.isna().any():
             missing = rows.index[rows.isna()][:5].tolist()
             raise KeyError(f"pairs not in the score table, e.g. {missing}")
@@ -83,8 +87,7 @@ def read(folder) -> ScoreTable:
     if not np.array_equal(pairs.regime.to_numpy() == "S", labelled):
         raise ValueError("pairs.csv `regime` must be S exactly for labelled pairs")
 
-    a, b = pairs.stitch_a.to_numpy(object), pairs.stitch_b.to_numpy(object)
-    key = pd.MultiIndex.from_arrays([np.where(a < b, a, b), np.where(a < b, b, a)])
+    key = _unordered(pairs.stitch_a, pairs.stitch_b)
     if key.duplicated().any():
         raise ValueError("pairs.csv lists a pair twice")
     row_of = pd.Series(pairs.pair_id.to_numpy(), index=key)
