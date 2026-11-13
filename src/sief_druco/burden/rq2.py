@@ -95,7 +95,7 @@ def unit_names(table: dt.DrugTable, person_drugs: pd.DataFrame) -> dict[str, str
     return names
 
 
-def _named(df: pd.DataFrame, names: dict[str, str]) -> pd.DataFrame:
+def named(df: pd.DataFrame, names: dict[str, str]) -> pd.DataFrame:
     return df.assign(name_a=df.unit_a.map(names), name_b=df.unit_b.map(names))
 
 
@@ -145,10 +145,10 @@ def run(
             columns=["status_before", "status_after", "mentions"],
         ),
         "counts": pd.DataFrame(list(counts.items()), columns=["what", "n"]),
-        "prevalence": _named(prev, names),
+        "prevalence": named(prev, names),
         "thresholds": prv.thresholds(prev),
         "thresholds_no_overrides": prv.thresholds(prv.pair_prevalence(before.persons, before.pairs)),
-        "top_all": per_cycle(e, _named(prev.head(TOP), names)),
+        "top_all": per_cycle(e, named(prev.head(TOP), names)),
         "collisions": e.table.collisions,
     }
     out_dir = Path(out_dir or OUT_DIR / "_".join(c.rstrip("_") for c in e.cycles))
