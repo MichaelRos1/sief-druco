@@ -65,5 +65,5 @@ All 82 hits have a verdict. Those on the 34 + 17 drugs are covered by their over
 
 ## 5. Lithium and hydrocodone (§11.1)
 
-- **Lithium:** no Decagon drug has lithium's structure. The only name hit is lithium aluminum hydride (`CID000028112`), whose side effects point to lithium (bipolar I disorder, mania). It is joined to lithium (`IN` 6448, section 3), so lithium is in the model. [derived]
+- **Lithium:** no Decagon drug has lithium's structure. The only name hit is lithium aluminum hydride (`CID000028112`), whose side effects point to lithium (bipolar I disorder, mania). It is joined to lithium (`IN` 6448, section 3), so lithium is in the model. [derived] Lithium carbonate (`IN` 42351, its salt) is an alias (#59): DDInter names lithium only as "Lithium carbonate", so without it every lithium pair was *not checkable*. NHANES reaches only 6448, so coverage doesn't move. [verified: RxNav properties, DDInter files, 2026-11-14]
 - **Hydrocodone** (`IN` 5489; NHANES pool 353 mentions, MEPS 15,503): no name hit, and none of the same-connectivity CIDs of PubChem's hydrocodone record (CID 5284569) is among the 645. Hydrocodone is *not in the model*, so gabapentin + hydrocodone can't be a positive control. [verified: PubChem, live 2026-11-09]
