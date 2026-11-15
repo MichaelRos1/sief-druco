@@ -10,7 +10,8 @@ the exposure tables of the main pool as the RQ2 run does, and writes to
   person per 100,000 band members with its interval, mean covered pairs per person,
   and the note its top list gets.
 - **tops**: each band's top 10 pairs by band burden (≥ 30 participants within the band),
-  with known to Decagon (`labelled`) and clinically documented (DDInter, §10).
+  with known to Decagon (`labelled`), clinically documented and the DDInter level
+  (`ddinter_level`, "" if not listed; §10).
 
 RQ4 runs on the main pool only; the re-runs of §11 don't repeat it. Numbers from a
 hand-off other than the final one (#64) are no results.
@@ -22,7 +23,7 @@ from pathlib import Path
 import pandas as pd
 
 from sief_druco.burden import groups as gr
-from sief_druco.burden import lookup, nhanes, rq2
+from sief_druco.burden import nhanes, rq2
 from sief_druco.burden import novelty as nv
 from sief_druco.burden import scores as sc
 from sief_druco.burden import survey
@@ -37,10 +38,7 @@ def run(
     table = sc.read(handoff)
     e = rq2.exposure(nhanes.MAIN_POOL, **exposure_args)
     design = survey.Design.from_persons(e.persons)
-    clinical = nv.ddinter(
-        e.table.stitch_of, ddinter_dir,
-        exposure_args.get("cache_dir", lookup.CACHE_DIR), exposure_args.get("fetch", lookup.http_fetch),
-    )
+    clinical = nv.ddinter(e.table.stitch_of, ddinter_dir, **rq2.lookup_args(exposure_args))
     args = (e.persons, e.person_drugs, e.pairs, table, design)
     tops = gr.band_tops(*args)
     tops = pd.concat([tops, clinical.label(tops.unit_a, tops.unit_b).set_index(tops.index)], axis=1)

@@ -24,7 +24,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from sief_druco.burden import lookup, nhanes, rq2
+from sief_druco.burden import nhanes, rq2
 from sief_druco.burden import novelty as nv
 from sief_druco.burden import prevalence as prv
 from sief_druco.burden import rankings as rk
@@ -48,10 +48,7 @@ def run(
     names = rq2.unit_names(e.table, e.person_drugs)
     design = survey.Design.from_persons(e.persons)
 
-    clinical = nv.ddinter(
-        e.table.stitch_of, ddinter_dir,
-        exposure_args.get("cache_dir", lookup.CACHE_DIR), exposure_args.get("fetch", lookup.http_fetch),
-    )
+    clinical = nv.ddinter(e.table.stitch_of, ddinter_dir, **rq2.lookup_args(exposure_args))
     pairs = rk.pair_burden(prv.pair_prevalence(e.persons, e.pairs, design=design), table)
     pairs = nv.label_pairs(pairs, table, clinical)
     triples = nv.label_triples(rk.triple_burden(pairs, table), table, clinical)

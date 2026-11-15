@@ -84,6 +84,12 @@ def exposure(
     return Exposure(cycles, table, persons, drugs, pdr.pairs(drugs))
 
 
+def lookup_args(exposure_args: dict) -> dict:
+    """The lookup settings (`cache_dir`, `fetch`) among a run's `exposure` arguments,
+    for the other lookups of that run."""
+    return {k: exposure_args[k] for k in ("cache_dir", "fetch") if k in exposure_args}
+
+
 def unit_names(table: dt.DrugTable, person_drugs: pd.DataFrame) -> dict[str, str]:
     """Display name of each pair unit: a STITCH ID by its main `IN`, else the
     source's `IN` name or drug name."""
