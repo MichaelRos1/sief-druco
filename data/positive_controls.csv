@@ -1,0 +1,193 @@
+entry,label,kind,class,name,id,note
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ACE inhibitor,benazepril,CID000002311,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ACE inhibitor,captopril,CID000002550,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ACE inhibitor,enalapril,CID000003222,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ACE inhibitor,fosinopril,CID000003419,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ACE inhibitor,lisinopril,CID000003937,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ACE inhibitor,moexipril,CID000091270,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ACE inhibitor,perindopril,CID000060184,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ACE inhibitor,quinapril,CID000005005,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ACE inhibitor,ramipril,CID000005038,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ACE inhibitor,trandolapril,CID000005525,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ARB,candesartan,CID000002541,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ARB,irbesartan,CID000003749,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ARB,losartan,CID000003961,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ARB,olmesartan,CID000130881,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ARB,telmisartan,CID000065999,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ARB,valsartan,CID000005650,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,renin inhibitor,aliskiren,CID005493444,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,potassium-sparing diuretic,amiloride,CID000016231,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ARNI,sacubitril,,not in the 645
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ARB,azilsartan,,not in the 645
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,ARB,eprosartan,,not in the 645
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,member,potassium-sparing diuretic,triamterene,,not in the 645
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,side_effect,,Excess potassium,C0020461,
+1,RAS inhibitor or K-sparing diuretic + another -> hyperkalaemia,note,,,,condition ignored: CKD stage 3a or worse (spec 11.1)
+2,opioid + benzodiazepine -> overdose,a,opioid,alfentanil,CID000051263,
+2,opioid + benzodiazepine -> overdose,a,opioid,buprenorphine,CID000002476,
+2,opioid + benzodiazepine -> overdose,a,opioid,butorphanol,CID000002487,
+2,opioid + benzodiazepine -> overdose,a,opioid,fentanyl,CID000003345,
+2,opioid + benzodiazepine -> overdose,a,opioid,hydromorphone,CID000003648,
+2,opioid + benzodiazepine -> overdose,a,opioid,meperidine,CID000004058,
+2,opioid + benzodiazepine -> overdose,a,opioid,methadone,CID000004095,
+2,opioid + benzodiazepine -> overdose,a,opioid,morphine,CID000004253,
+2,opioid + benzodiazepine -> overdose,a,opioid,nalbuphine,CID000004419,
+2,opioid + benzodiazepine -> overdose,a,opioid,oxycodone,CID000004635,
+2,opioid + benzodiazepine -> overdose,a,opioid,pentazocine,CID000004736,
+2,opioid + benzodiazepine -> overdose,a,opioid,remifentanil,CID000060815,
+2,opioid + benzodiazepine -> overdose,a,opioid,sufentanil,CID000041693,
+2,opioid + benzodiazepine -> overdose,a,opioid,tramadol,CID000005523,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,alprazolam,CID000002118,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,chlordiazepoxide,CID000002712,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,clonazepam,CID000002802,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,diazepam,CID000003016,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,estazolam,CID000003261,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,flurazepam,CID000003393,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,lorazepam,CID000003958,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,midazolam,CID000004192,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,nitrazepam,CID000004506,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,oxazepam,CID000004616,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,quazepam,CID000004999,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,temazepam,CID000005391,
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,triazolam,CID000005556,
+2,opioid + benzodiazepine -> overdose,a,opioid,codeine,,not in the 645
+2,opioid + benzodiazepine -> overdose,a,opioid,hydrocodone,,not in the 645
+2,opioid + benzodiazepine -> overdose,a,opioid,oxymorphone,,not in the 645
+2,opioid + benzodiazepine -> overdose,a,opioid,tapentadol,,not in the 645
+2,opioid + benzodiazepine -> overdose,b,benzodiazepine,clorazepate,,not in the 645
+2,opioid + benzodiazepine -> overdose,side_effect,,Hypoventilation,C0398353,
+2,opioid + benzodiazepine -> overdose,side_effect,,respiratory failure,C1145670,
+2,opioid + benzodiazepine -> overdose,side_effect,,drowsiness,C0013144,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,alfentanil,CID000051263,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,buprenorphine,CID000002476,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,butorphanol,CID000002487,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,fentanyl,CID000003345,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,hydromorphone,CID000003648,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,meperidine,CID000004058,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,methadone,CID000004095,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,morphine,CID000004253,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,nalbuphine,CID000004419,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,oxycodone,CID000004635,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,pentazocine,CID000004736,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,remifentanil,CID000060815,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,sufentanil,CID000041693,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,tramadol,CID000005523,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",b,gabapentinoid,gabapentin,CID000003446,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",b,gabapentinoid,pregabalin,CID000125889,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,codeine,,not in the 645
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,hydrocodone,,not in the 645
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,oxymorphone,,not in the 645
+3,"opioid + gabapentinoid -> sedation, respiratory depression",a,opioid,tapentadol,,not in the 645
+3,"opioid + gabapentinoid -> sedation, respiratory depression",side_effect,,Hypoventilation,C0398353,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",side_effect,,respiratory failure,C1145670,
+3,"opioid + gabapentinoid -> sedation, respiratory depression",side_effect,,drowsiness,C0013144,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antidepressant,amitriptyline,CID000002160,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antidepressant,amoxapine,CID000002170,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antidepressant,clomipramine,CID000002801,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antidepressant,desipramine,CID000002995,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antidepressant,doxepin,CID000003158,condition ignored: Table 7 lists doxepin above 6 mg/day only
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antidepressant,imipramine,CID000003696,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antidepressant,nortriptyline,CID000004543,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antidepressant,paroxetine,CID000004691,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antiemetic,prochlorperazine,CID000004917,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antiemetic,promethazine,CID000004927,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,first-generation antihistamine,chlorpheniramine,CID000002725,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,first-generation antihistamine,hydroxyzine,CID000003658,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,first-generation antihistamine,meclizine,CID000004034,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,bladder antimuscarinic,darifenacin,CID000072054,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,bladder antimuscarinic,oxybutynin,CID000004634,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,bladder antimuscarinic,solifenacin,CID000154059,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,bladder antimuscarinic,tolterodine,CID000005512,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,bladder antimuscarinic,trospium,CID000005596,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antiparkinsonian,trihexyphenidyl,CID000005572,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antipsychotic,chlorpromazine,CID000002726,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antipsychotic,clozapine,CID000002818,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antipsychotic,olanzapine,CID000004585,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antipsychotic,perphenazine,CID000004748,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antispasmodic,atropine,CID000003661,hyoscyamine (Table 7) joins the same Decagon drug
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antispasmodic,dicyclomine,CID000003042,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,antispasmodic,scopolamine,CID000005184,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,skeletal muscle relaxant,cyclobenzaprine,CID000002895,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,skeletal muscle relaxant,orphenadrine,CID000004601,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,Table 7,brompheniramine,,not in the 645
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,Table 7,cyproheptadine,,not in the 645
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,Table 7,dimenhydrinate,,not in the 645
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,Table 7,diphenhydramine,,not in the 645
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,Table 7,doxylamine,,not in the 645
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,Table 7,triprolidine,,not in the 645
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,Table 7,fesoterodine,,not in the 645
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,Table 7,flavoxate,,not in the 645
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,Table 7,benztropine,,not in the 645
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,Table 7,homatropine,,not in the 645
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",member,Table 7,clidinium,,not in the 645
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",side_effect,,cognitive disorder,C0009241,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",side_effect,,confusion,C0009676,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",side_effect,,bone fracture,C0016658,
+4,"anticholinergic + anticholinergic -> cognitive decline, delirium, falls, fractures",note,,,,drugs from Beers Table 7; no Decagon side effect for falls
+5,">= 3 CNS-active drugs -> falls, fractures",out_of_scope,,,,"a drug set, not a pair (#21)"
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,a,lithium,lithium,CID000028112,structure slip (spec 4): joined by its single-drug side effects
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ACE inhibitor,benazepril,CID000002311,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ACE inhibitor,captopril,CID000002550,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ACE inhibitor,enalapril,CID000003222,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ACE inhibitor,fosinopril,CID000003419,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ACE inhibitor,lisinopril,CID000003937,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ACE inhibitor,moexipril,CID000091270,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ACE inhibitor,perindopril,CID000060184,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ACE inhibitor,quinapril,CID000005005,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ACE inhibitor,ramipril,CID000005038,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ACE inhibitor,trandolapril,CID000005525,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ARB,candesartan,CID000002541,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ARB,irbesartan,CID000003749,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ARB,losartan,CID000003961,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ARB,olmesartan,CID000130881,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ARB,telmisartan,CID000065999,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ARB,valsartan,CID000005650,
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ARNI,sacubitril,,not in the 645
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ARB,azilsartan,,not in the 645
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,b,ARB,eprosartan,,not in the 645
+6,lithium + ACEI / ARB / ARNI -> lithium toxicity,side_effect,,drug toxicity NOS,C0013221,
+7,lithium + loop diuretic -> lithium toxicity,a,lithium,lithium,CID000028112,structure slip (spec 4): joined by its single-drug side effects
+7,lithium + loop diuretic -> lithium toxicity,b,loop diuretic,bumetanide,CID000002471,
+7,lithium + loop diuretic -> lithium toxicity,b,loop diuretic,ethacrynate,CID000003278,
+7,lithium + loop diuretic -> lithium toxicity,b,loop diuretic,furosemide,CID000003440,
+7,lithium + loop diuretic -> lithium toxicity,b,loop diuretic,torsemide,CID000041781,
+7,lithium + loop diuretic -> lithium toxicity,side_effect,,drug toxicity NOS,C0013221,
+8,non-selective peripheral alpha-1 blocker + loop diuretic -> urinary incontinence,a,non-selective alpha-1 blocker,doxazosin,CID000003157,
+8,non-selective peripheral alpha-1 blocker + loop diuretic -> urinary incontinence,a,non-selective alpha-1 blocker,prazosin,CID000004893,
+8,non-selective peripheral alpha-1 blocker + loop diuretic -> urinary incontinence,a,non-selective alpha-1 blocker,terazosin,CID000005401,
+8,non-selective peripheral alpha-1 blocker + loop diuretic -> urinary incontinence,b,loop diuretic,bumetanide,CID000002471,
+8,non-selective peripheral alpha-1 blocker + loop diuretic -> urinary incontinence,b,loop diuretic,ethacrynate,CID000003278,
+8,non-selective peripheral alpha-1 blocker + loop diuretic -> urinary incontinence,b,loop diuretic,furosemide,CID000003440,
+8,non-selective peripheral alpha-1 blocker + loop diuretic -> urinary incontinence,b,loop diuretic,torsemide,CID000041781,
+8,non-selective peripheral alpha-1 blocker + loop diuretic -> urinary incontinence,side_effect,,Incontinence,C0042024,
+8,non-selective peripheral alpha-1 blocker + loop diuretic -> urinary incontinence,side_effect,,Stress incontinence,C0042025,
+8,non-selective peripheral alpha-1 blocker + loop diuretic -> urinary incontinence,note,,,,condition ignored: older women (spec 11.1)
+9,phenytoin + trimethoprim-sulfamethoxazole -> phenytoin toxicity,a,phenytoin,phenytoin,CID000001775,
+9,phenytoin + trimethoprim-sulfamethoxazole -> phenytoin toxicity,b,trimethoprim-sulfamethoxazole,trimethoprim,CID000005578,
+9,phenytoin + trimethoprim-sulfamethoxazole -> phenytoin toxicity,b,trimethoprim-sulfamethoxazole,sulfamethoxazole,,not in the 645
+9,phenytoin + trimethoprim-sulfamethoxazole -> phenytoin toxicity,side_effect,,drug toxicity NOS,C0013221,
+9,phenytoin + trimethoprim-sulfamethoxazole -> phenytoin toxicity,note,,,,sulfamethoxazole is not in the 645; trimethoprim stands for the combination
+10,theophylline + cimetidine -> theophylline toxicity,a,theophylline,theophylline,CID000002153,
+10,theophylline + cimetidine -> theophylline toxicity,b,cimetidine,cimetidine,CID000002756,
+10,theophylline + cimetidine -> theophylline toxicity,side_effect,,drug toxicity NOS,C0013221,
+11,theophylline + ciprofloxacin -> theophylline toxicity,a,theophylline,theophylline,CID000002153,
+11,theophylline + ciprofloxacin -> theophylline toxicity,b,ciprofloxacin,ciprofloxacin,CID000002764,
+11,theophylline + ciprofloxacin -> theophylline toxicity,side_effect,,drug toxicity NOS,C0013221,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,a,warfarin,warfarin,CID000006691,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,amiodarone,amiodarone,CID000002156,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,ciprofloxacin,ciprofloxacin,CID000002764,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,macrolide (not azithromycin),clarithromycin,CID000054688,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,macrolide (not azithromycin),erythromycin,CID000003255,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,macrolide (not azithromycin),telithromycin,CID003002190,"ketolide, in ATC J01FA (macrolides)"
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,trimethoprim-sulfamethoxazole,trimethoprim,CID000005578,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,SSRI,citalopram,CID000002771,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,SSRI,fluoxetine,CID000003386,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,SSRI,fluvoxamine,CID000003404,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,SSRI,paroxetine,CID000004691,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,SSRI,sertraline,CID000005203,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,SSRI,escitalopram,,not in the 645
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,b,trimethoprim-sulfamethoxazole,sulfamethoxazole,,not in the 645
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,side_effect,,Bleeding,C0019080,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,side_effect,,gastrointestinal bleed,C0017181,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,side_effect,,cerebral haemorrhage,C0007784,
+12,warfarin + amiodarone / ciprofloxacin / macrolide / TMP-SMX / SSRI -> bleeding,note,,,,sulfamethoxazole is not in the 645; trimethoprim stands for the combination
