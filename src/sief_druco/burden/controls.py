@@ -58,7 +58,6 @@ CONTROL_COLUMNS = [
     *PAIR_COLUMNS, "labelled", "labelled_mapped", "checkable",
     "best_side_effect", "best_p", "best_percentile", "recovered",
 ]
-BURDEN_COLUMNS = ["participants", "burden", "rank", "top50"]
 ENTRY_COLUMNS = ["entry", "label", "controls", "checkable", "recovered", "recovered_text", "labelled", "ranked", "top50"]
 UNCHECKED_COLUMNS = ["entry", "label", "name", "reason"]
 
@@ -75,11 +74,9 @@ def _in_table(controls: pd.DataFrame, table: sc.ScoreTable) -> pd.DataFrame:
     return controls[is_drug | is_effect]
 
 
-def pairs(controls: pd.DataFrame, table: sc.ScoreTable) -> pd.DataFrame:
-    """Every control (`PAIR_COLUMNS`): an entry's `a` × `b` pairs, or any two distinct
-    `member` drugs, of drugs in the score table; unordered, lower STITCH ID first."""
-    drugs = _in_table(controls, table)
-    drugs = drugs[drugs.kind.isin(DRUG_KINDS)]
+def _pairs(drugs: pd.DataFrame) -> pd.DataFrame:
+    """Every control (`PAIR_COLUMNS`) of the drug rows in the score table: an entry's
+    `a` × `b` pairs, or any two distinct `member` drugs; unordered, lower STITCH ID first."""
     rows = []
     for entry, g in drugs.groupby("entry", sort=True):
         name = dict(zip(g.id, g.name))
@@ -97,9 +94,9 @@ def pairs(controls: pd.DataFrame, table: sc.ScoreTable) -> pd.DataFrame:
 def model_view(controls: pd.DataFrame, table: sc.ScoreTable) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Each control's percentile per side effect of its entry (`TRIPLE_COLUMNS`) and per
     control (`CONTROL_COLUMNS`, its best side effect). Reads only the score table."""
-    ctrl = pairs(controls, table)
-    effects = _in_table(controls, table)
-    effects = effects[effects.kind == "side_effect"].drop_duplicates(["entry", "id"])
+    known = _in_table(controls, table)
+    ctrl = _pairs(known[known.kind.isin(DRUG_KINDS)])
+    effects = known[known.kind == "side_effect"].drop_duplicates(["entry", "id"])
     col_of = pd.Series(np.arange(len(table.side_effects)), index=table.side_effects.cui)
     cols = np.unique(col_of[effects.id].to_numpy())
 
@@ -144,15 +141,15 @@ def model_view(controls: pd.DataFrame, table: sc.ScoreTable) -> tuple[pd.DataFra
     return triples[TRIPLE_COLUMNS], out[CONTROL_COLUMNS]
 
 
-def burden_view(control_df: pd.DataFrame, pair_burden: pd.DataFrame, top: int = TOP) -> pd.DataFrame:
+def burden_view(control_df: pd.DataFrame, pair_burden: pd.DataFrame) -> pd.DataFrame:
     """The controls with their pair's participants, burden and overall rank from
     `rankings.pair_burden` (ranked only with ≥ 30 participants), and whether that rank is
-    in the top `top`. A pair nobody takes has 0 participants and no rank."""
+    in the top 50. A pair nobody takes has 0 participants and no rank."""
     pb = pair_burden.set_index(["unit_a", "unit_b"])[["participants", "burden", "rank"]]
     out = control_df.join(pb, on=["unit_a", "unit_b"])
     out["participants"] = out.participants.fillna(0).astype(int)
     out["rank"] = out["rank"].astype("Int64")
-    out["top50"] = (out["rank"] <= top).fillna(False).astype(bool)
+    out["top50"] = (out["rank"] <= TOP).fillna(False).astype(bool)
     return out
 
 
@@ -165,14 +162,15 @@ def _k_of_n(g: pd.DataFrame) -> dict:
         "recovered": recovered,
         "recovered_text": f"{recovered} of {checkable} recovered",
         "labelled": int(g.labelled.sum()),
-        "ranked": int(g["rank"].notna().sum()) if "rank" in g else pd.NA,
-        "top50": int(g.top50.sum()) if "top50" in g else pd.NA,
+        "ranked": int(g["rank"].notna().sum()),
+        "top50": int(g.top50.sum()),
     }
 
 
 def entries(controls: pd.DataFrame, report: pd.DataFrame) -> pd.DataFrame:
     """"k of n recovered" per Beers entry with a control pair, then over all controls
-    (`entry` "all"). n counts checkable controls only. No pass/fail."""
+    (`entry` "all"), from a `burden_view` report. n counts checkable controls only. No
+    pass/fail."""
     label = controls.drop_duplicates("entry").set_index("entry").label
     rows = [{"entry": e, "label": label[e], **_k_of_n(g)} for e, g in report.groupby("entry", sort=True)]
     rows.append({"entry": "all", "label": "all controls", **_k_of_n(report)})

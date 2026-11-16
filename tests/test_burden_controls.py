@@ -58,7 +58,8 @@ def by_pair(df):
 
 
 def test_control_pairs_are_a_times_b_or_two_distinct_members(controls, table):
-    got = set(map(tuple, ct.pairs(controls, table)[["entry", "unit_a", "unit_b"]].to_numpy()))
+    _, report = ct.model_view(controls, table)
+    got = set(map(tuple, report[["entry", "unit_a", "unit_b"]].to_numpy()))
     assert got == {
         (1, D4, D5), (2, D3, D5),
         (3, D1, D2), (3, D1, D3), (3, D2, D3),
@@ -131,10 +132,11 @@ def test_burden_view_ranks_only_pairs_with_30_participants(controls, table):
     assert r[3, D1, D3].participants == 0 and pd.isna(r[3, D1, D3].rank)  # nobody takes it
 
 
-def test_burden_view_top_k_boundary(controls, table):
+def test_burden_view_top_k_boundary(controls, table, monkeypatch):
+    monkeypatch.setattr(ct, "TOP", 1)  # the cut-off at rank 50, shrunk to fit 10 pairs
     _, report = ct.model_view(controls, table)
     pb = pb_frame(table, {(D3, D5): 30, (D1, D2): 31})  # ranks 1 and 2, as above
-    r = by_pair(ct.burden_view(report, pb, top=1))
+    r = by_pair(ct.burden_view(report, pb))
     assert r[2, D3, D5].top50 and not r[3, D1, D2].top50
 
 
