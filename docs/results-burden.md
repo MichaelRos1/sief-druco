@@ -138,5 +138,6 @@ Share of each row by status, in %, as in §6. A mention here is a purchase recor
 | Source | name not found (class labels, multivitamins, topicals) | 167 | 45,125 | 4.28 | 4.16 |
 | Decagon | Decagon drug reached no `IN` | 0 | 0 | 0 | 0 |
 
+- **What the hand fixes and aliases moved:** against the same run without the overrides, 26,196 of 1,053,431 mentions (2.5%) moved into *covered*. 25,862 came from *not in the model*, led by montelukast 8,109, rosuvastatin 5,346 and allopurinol 4,266. 334 came from Decagon-side *mapping failed* (sevelamer, vitamin K1). 981 moved out: betamethasone and isotretinoin, dropped as provisional joins, plus heparin and sorbitol. 2,294 covered mentions join through an alias `IN`.
 - The most common names that don't map are therapeutic-class labels (psychotherapeutic agents 2,586 records, antiviral agents 2,471, CNS agents 1,749, narcotic analgesics 1,729) and multivitamins (1,658). No source-side hand fixes (§4).
 - **Footnote:** the file documentation counts 5,496 / 4,473 / 4,226 fewer records with a positive person weight in 2015 / 2016 / 2017 than the released files, where every record has one (324,957 against 330,453 in 2015). The released weights are used.

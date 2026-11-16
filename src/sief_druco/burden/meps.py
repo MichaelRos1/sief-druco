@@ -21,7 +21,8 @@ HC-178A (2015), HC-188A (2016) and HC-197A (2017) hold one record per purchase
   multivitamins, ...) `NAME_NOT_FOUND`. Both are *mapping failed*.
 
 `python -m sief_druco.burden.meps [years ...]` (default 2015 2016 2017) writes the
-coverage tables of §6 and the point prevalence of every pair to
+coverage tables of §6 (with what the hand fixes and aliases moved, against the same
+run without the overrides) and the point prevalence of every pair to
 `local/data/burden/meps/<years>/`.
 """
 
@@ -78,17 +79,16 @@ def check_years(years) -> tuple[int, ...]:
     return years
 
 
-def load_records(years=YEARS, raw_dir: Path = RAW_DIR) -> pd.DataFrame:
-    """PMED records with a positive person weight (`RECORD_COLUMNS`).
+def read_records(years=YEARS, raw_dir: Path = RAW_DIR) -> pd.DataFrame:
+    """Every PMED record of the given years (`RECORD_COLUMNS`), each file read once.
 
-    `weight` is the year's raw `PERWTyyF`; `persons` divides it by the years pooled.
+    `weight` is the year's raw `PERWTyyF`, zero for a person outside the weighted
+    sample; `person_years` divides it by the years pooled.
     """
     tables = []
     for year in check_years(years):
         f = FILES[year]
         d = pd.read_sas(Path(raw_dir) / f / f"{f}.ssp", format="xport", encoding="latin-1")
-        weight = d[f"PERWT{year % 100}F"]
-        d = d[weight > 0]
         ids = d.DUPERSID.astype(str).str.strip()
         if not ids.str.fullmatch(r"\d+").all():
             raise ValueError(f"MEPS {year}: DUPERSID is not numeric")
@@ -97,31 +97,38 @@ def load_records(years=YEARS, raw_dir: Path = RAW_DIR) -> pd.DataFrame:
             "dupersid": ids.astype("int64"),
             "round": d.PURCHRD.astype("int64"),
             "name": d.RXDRGNAM.fillna("").astype(str).str.strip(),
-            "weight": weight[weight > 0],
+            "weight": d[f"PERWT{year % 100}F"],
         }))
     return pd.concat(tables, ignore_index=True)[RECORD_COLUMNS]
 
 
-def record_counts(years=YEARS, raw_dir: Path = RAW_DIR) -> pd.DataFrame:
-    """Per year: records in the released file, those with a positive weight, and the
-    documented count of positive-weight records (the footnote of §11.2)."""
-    rows = []
-    for year in check_years(years):
-        f = FILES[year]
-        d = pd.read_sas(Path(raw_dir) / f / f"{f}.ssp", format="xport", encoding="latin-1")
-        positive = int((d[f"PERWT{year % 100}F"] > 0).sum())
-        documented = DOCUMENTED_POSITIVE_WEIGHT[year]
-        rows.append([year, len(d), positive, documented, positive - documented])
-    return pd.DataFrame(rows, columns=["year", "records", "positive_weight", "documented", "difference"])
+def positive_weight(records: pd.DataFrame) -> pd.DataFrame:
+    """The records of persons with a positive weight: the ones the tables use."""
+    return records[records.weight > 0].reset_index(drop=True)
 
 
-def persons(records: pd.DataFrame) -> pd.DataFrame:
+def load_records(years=YEARS, raw_dir: Path = RAW_DIR) -> pd.DataFrame:
+    """PMED records with a positive person weight (`RECORD_COLUMNS`)."""
+    return positive_weight(read_records(years, raw_dir))
+
+
+def record_counts(all_records: pd.DataFrame) -> pd.DataFrame:
+    """Per year of `read_records`: records in the released file, those with a positive
+    weight, and the documented count of positive-weight records (§11.2 footnote)."""
+    by_year = all_records.groupby("year").weight
+    out = pd.DataFrame({"records": by_year.size(), "positive_weight": by_year.agg(lambda w: int((w > 0).sum()))})
+    out["documented"] = out.index.map(DOCUMENTED_POSITIVE_WEIGHT)
+    out["difference"] = out.positive_weight - out.documented
+    return out.reset_index()
+
+
+def person_years(records: pd.DataFrame) -> pd.DataFrame:
     """The `persons` table (spec §5): one row per person-year on the PMED files."""
     years = check_years(sorted(records.year.unique()))
-    by = records.groupby(["year", "dupersid"]).weight
-    if (by.nunique() > 1).any():
+    by_person = records.groupby(["year", "dupersid"]).weight
+    if (by_person.nunique() > 1).any():
         raise ValueError("a person's weight differs between their records")
-    w = by.first().reset_index()
+    w = by_person.first().reset_index()
     n = len(w)
     empty = pd.array([pd.NA] * n, dtype="Int64")
     return pd.DataFrame({
@@ -176,42 +183,41 @@ def build_person_drugs(
         rx.save()
 
 
-def counts(records: pd.DataFrame, persons_: pd.DataFrame, person_drugs: pd.DataFrame) -> dict:
+def counts(records: pd.DataFrame, persons: pd.DataFrame, person_drugs: pd.DataFrame) -> dict:
     """Head counts for the text: records reaching an `IN`, person-years with ≥ 2
     ingredients (any round, and within one round), distinct persons."""
-    failed = person_drugs[~person_drugs.drug.str.startswith("in:")]
-    reached = len(records) - int(failed.mentions.sum())
-    ins = person_drugs[person_drugs.drug.str.startswith("in:")]
-    per_year = ins.groupby(pdr.PERSON).drug.nunique()
-    per_round = ins.groupby([*pdr.PERSON, "round"]).drug.nunique().groupby(level=pdr.PERSON).max()
+    reached_in = person_drugs.drug.str.startswith("in:")
+    no_in = person_drugs[~reached_in]
+    ingredients = person_drugs[reached_in]
+    records_reaching_in = len(records) - int(no_in.mentions.sum())
+    per_year = ingredients.groupby(pdr.PERSON).drug.nunique()
+    per_round = ingredients.groupby([*pdr.PERSON, "round"]).drug.nunique().groupby(level=pdr.PERSON).max()
     return {
         "records": len(records),
-        "records_reaching_in": reached,
-        "records_reaching_in_pct": round(100 * reached / len(records), 2),
-        "no_name_records": int(failed.mentions[failed.cause == NO_NAME].sum()),
-        "person_years": len(persons_),
-        "persons": int(persons_.seqn.nunique()),
+        "records_reaching_in": records_reaching_in,
+        "records_reaching_in_pct": round(100 * records_reaching_in / len(records), 2),
+        "no_name_records": int(no_in.mentions[no_in.cause == NO_NAME].sum()),
+        "person_years": len(persons),
+        "persons": int(persons.seqn.nunique()),
         "person_years_2_ins": int((per_year >= 2).sum()),
         "person_years_2_ins_same_round": int((per_round >= 2).sum()),
-        "population": round(persons_.weight.sum()),
+        "population": round(persons.weight.sum()),
     }
 
 
 def exposure(
-    years=YEARS,
+    records: pd.DataFrame,
     overrides_path: Path | None = dt.OVERRIDES_PATH,
-    raw_dir: Path = RAW_DIR,
     cache_dir: Path = lookup.CACHE_DIR,
     fetch: lookup.Fetch = lookup.http_fetch,
-    records: pd.DataFrame | None = None,
 ) -> rq2.Exposure:
-    """The MEPS exposure tables (spec §5), Decagon-side failures marked as for NHANES."""
-    years = check_years(years)
-    records = load_records(years, raw_dir) if records is None else records
+    """The MEPS exposure tables (spec §5) of `load_records`, Decagon-side failures
+    marked as for NHANES."""
+    years = check_years(sorted(records.year.unique()))
     table = dt.build(overrides_path=overrides_path, cache_dir=cache_dir, fetch=fetch)
     drugs = build_person_drugs(records, table.stitch_of, cache_dir, fetch)
     drugs = cov.mark_decagon_failures(drugs, rq2.decagon_failures(table, drugs, cache_dir, fetch))
-    return rq2.Exposure(tuple(map(str, years)), table, persons(records), drugs, pdr.pairs(drugs))
+    return rq2.Exposure(tuple(map(str, years)), table, person_years(records), drugs, pdr.pairs(drugs))
 
 
 def run(
@@ -223,16 +229,19 @@ def run(
     fetch: lookup.Fetch = lookup.http_fetch,
 ) -> dict[str, pd.DataFrame]:
     years = check_years(years)
-    records = load_records(years, raw_dir)
-    e = exposure(years, overrides_path, raw_dir, cache_dir, fetch, records=records)
+    all_records = read_records(years, raw_dir)
+    records = positive_weight(all_records)
+    e = exposure(records, overrides_path, cache_dir, fetch)
+    before = exposure(records, None, cache_dir, fetch)  # the same run without the overrides
     names = rq2.unit_names(e.table, e.person_drugs)
     prev = prv.point_prevalence(e.persons, e.pairs)
-    n = counts(records, e.persons, e.person_drugs) | {"ranked_pairs": len(prv.ranked(prev))}
+    head_counts = counts(records, e.persons, e.person_drugs) | {"ranked_pairs": len(prv.ranked(prev))}
     out = {
         "coverage": cov.table(e.persons, e.person_drugs, e.pairs),
         "failures": cov.failures(e.persons, e.person_drugs),
-        "counts": pd.DataFrame(list(n.items()), columns=["what", "n"]),
-        "record_counts": record_counts(years, raw_dir),
+        "moved": rq2.moved_table(before, e),
+        "counts": pd.DataFrame(list(head_counts.items()), columns=["what", "n"]),
+        "record_counts": record_counts(all_records),
         "prevalence": rq2.named(prev, names),
         "thresholds": prv.thresholds(prev),
     }

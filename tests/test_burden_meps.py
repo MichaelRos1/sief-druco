@@ -103,7 +103,7 @@ def test_a_person_in_two_years_counts_as_two_person_years():
         (2016, 60001101, 1, "LISINOPRIL", 6000.0),
         (2016, 60002201, 2, "ATORVASTATIN", 3000.0),
     ])
-    persons = meps.persons(r)
+    persons = meps.person_years(r)
     assert len(persons) == 3
     one = persons[persons.seqn == 60001101].set_index("cycle")
     # Weight PERWTyyF ÷ the two years pooled, each year its own.
@@ -119,13 +119,27 @@ def test_a_person_in_two_years_counts_as_two_person_years():
 
 def test_the_pool_divides_each_weight_by_three():
     r = records_of([(y, 1, 1, "METFORMIN", 300.0) for y in meps.YEARS])
-    assert meps.persons(r).weight.tolist() == [100.0, 100.0, 100.0]
+    assert meps.person_years(r).weight.tolist() == [100.0, 100.0, 100.0]
+
+
+def test_weight_zero_records_are_counted_but_left_out():
+    all_records = records_of([
+        (2015, 1, 1, "METFORMIN", 300.0),
+        (2015, 2, 1, "LISINOPRIL", 0.0),
+        (2016, 3, 1, "METFORMIN", 300.0),
+    ])
+    rc = meps.record_counts(all_records).set_index("year")
+    assert rc[["records", "positive_weight"]].to_dict("index") == {
+        2015: {"records": 2, "positive_weight": 1}, 2016: {"records": 1, "positive_weight": 1},
+    }
+    assert rc.difference[2015] == 1 - meps.DOCUMENTED_POSITIVE_WEIGHT[2015]
+    assert meps.positive_weight(all_records).dupersid.tolist() == [1, 3]
 
 
 def test_one_person_year_has_one_weight():
     r = records_of([(2015, 1, 1, "METFORMIN", 300.0), (2015, 1, 2, "LISINOPRIL", 301.0)])
     with pytest.raises(ValueError, match="weight differs"):
-        meps.persons(r)
+        meps.person_years(r)
 
 
 # --- Masked and unmapped records ---
@@ -158,7 +172,7 @@ def test_counts_records_reaching_an_ingredient():
         (2017, 5, 2, "-9", 100.0),
         (2017, 6, 1, "ANTIVIRAL AGENTS", 100.0),
     ])
-    n = meps.counts(r, meps.persons(r), drugs_of(r))
+    n = meps.counts(r, meps.person_years(r), drugs_of(r))
     assert (n["records"], n["records_reaching_in"], n["no_name_records"]) == (4, 2, 1)
     assert (n["person_years"], n["person_years_2_ins"], n["person_years_2_ins_same_round"]) == (2, 1, 1)
 
@@ -173,7 +187,7 @@ def meps_tables():
         for i in range(6)
         for name in (["METFORMIN", "LISINOPRIL"] if i % 2 else ["ATORVASTATIN", "METFORMIN"])
     ])
-    return meps.persons(r), pdr.pairs(drugs_of(r))
+    return meps.person_years(r), pdr.pairs(drugs_of(r))
 
 
 def test_meps_gets_no_variance_or_interval(meps_tables):
@@ -237,6 +251,11 @@ def test_meps_2015_17_matches_the_research_counts(tmp_path):
     # Every released record has a positive weight, against the documented counts.
     rc = out["record_counts"].set_index("year")
     assert rc.difference.to_dict() == {2015: 5_496, 2016: 4_473, 2017: 4_226}
+
+    # What the hand fixes and aliases moved, against the same run without them (§6).
+    moved = out["moved"].set_index("status_after").mentions
+    assert moved["all_mentions"] == out["coverage"].set_index(["level", "weighted"]).total[(cov.MENTIONS, False)]
+    assert moved[[pdr.COVERED]].sum() > 0
 
     c = out["coverage"].set_index(["level", "weighted"])
     assert c[list(pdr.STATUSES)].sum(axis=1).to_numpy() == pytest.approx(100)

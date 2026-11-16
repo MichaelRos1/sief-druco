@@ -52,6 +52,10 @@ def pair_matrix(persons: pd.DataFrame, pairs: pd.DataFrame) -> tuple[sp.csr_arra
     return y, out
 
 
+def _most_prevalent_first(out: pd.DataFrame) -> pd.DataFrame:
+    return out[COLUMNS].sort_values(["prevalence", "unit_a", "unit_b"], ascending=[False, True, True]).reset_index(drop=True)
+
+
 def pair_prevalence(persons: pd.DataFrame, pairs: pd.DataFrame, domain=None, design=None) -> pd.DataFrame:
     """One row per distinct pair (`COLUMNS`), most prevalent first.
 
@@ -67,7 +71,7 @@ def pair_prevalence(persons: pd.DataFrame, pairs: pd.DataFrame, domain=None, des
     out["participants"] = np.asarray(y.T @ dom.astype(float)).astype(int)
     out["prevalence"] = PER * np.asarray(est.value)
     out["ci_low"], out["ci_high"] = PER * lo, PER * hi
-    return out[COLUMNS].sort_values(["prevalence", "unit_a", "unit_b"], ascending=[False, True, True]).reset_index(drop=True)
+    return _most_prevalent_first(out)
 
 
 def point_prevalence(persons: pd.DataFrame, pairs: pd.DataFrame) -> pd.DataFrame:
@@ -79,7 +83,7 @@ def point_prevalence(persons: pd.DataFrame, pairs: pd.DataFrame) -> pd.DataFrame
     out["participants"] = np.asarray(y.sum(axis=0)).astype(int)
     out["prevalence"] = PER * np.asarray(y.T @ w) / w.sum()
     out["ci_low"] = out["ci_high"] = np.nan
-    return out[COLUMNS].sort_values(["prevalence", "unit_a", "unit_b"], ascending=[False, True, True]).reset_index(drop=True)
+    return _most_prevalent_first(out)
 
 
 def ranked(prevalence: pd.DataFrame, min_participants: int = RANK_MIN) -> pd.DataFrame:

@@ -122,6 +122,19 @@ def per_cycle(e: Exposure, top: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def moved_table(before: Exposure, after: Exposure) -> pd.DataFrame:
+    """What the hand fixes and aliases moved (§6 supplement), in mentions: `before` is
+    the same run without the overrides. One row per (status before, status after),
+    then the covered mentions joining through an alias `IN` and all mentions."""
+    aliases = after.table.ingredients.rxcui[after.table.ingredients.role == "alias"]
+    moved = cov.moved(before.person_drugs, after.person_drugs, aliases)
+    return pd.DataFrame(
+        [[b, a, m] for (b, a), m in moved["changed"].items()]
+        + [["", "via_alias", moved["via_alias"]], ["", "all_mentions", moved["mentions"]]],
+        columns=["status_before", "status_after", "mentions"],
+    )
+
+
 def run(
     cycles=nhanes.MAIN_POOL,
     out_dir: Path | None = None,
@@ -132,8 +145,6 @@ def run(
 ) -> dict[str, pd.DataFrame]:
     e = exposure(cycles, overrides_path, raw_dir, cache_dir, fetch)
     before = exposure(cycles, None, raw_dir, cache_dir, fetch)  # the same run without the overrides
-    aliases = e.table.ingredients.rxcui[e.table.ingredients.role == "alias"]
-    moved = cov.moved(before.person_drugs, e.person_drugs, aliases)
     names = unit_names(e.table, e.person_drugs)
 
     prev = prv.pair_prevalence(e.persons, e.pairs)
@@ -145,11 +156,7 @@ def run(
         "coverage": cov.table(e.persons, e.person_drugs, e.pairs),
         "coverage_no_overrides": cov.table(before.persons, before.person_drugs, before.pairs),
         "failures": cov.failures(e.persons, e.person_drugs),
-        "moved": pd.DataFrame(
-            [[b, a, m] for (b, a), m in moved["changed"].items()]
-            + [["", "via_alias", moved["via_alias"]], ["", "all_mentions", moved["mentions"]]],
-            columns=["status_before", "status_after", "mentions"],
-        ),
+        "moved": moved_table(before, e),
         "counts": pd.DataFrame(list(counts.items()), columns=["what", "n"]),
         "prevalence": named(prev, names),
         "thresholds": prv.thresholds(prev),
