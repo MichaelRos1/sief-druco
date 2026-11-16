@@ -38,16 +38,11 @@ import pandas as pd
 from sief_druco.burden import decagon_table as dt
 from sief_druco.burden import lookup, nhanes
 from sief_druco.burden import person_drugs as pdr
-from sief_druco.burden.ingredients import NO_CODE, Resolver
+from sief_druco.burden.ingredients import NO_CODE
 from sief_druco.burden.lookup import PUG, RXNAV, Cache
 
 SIDER_NAMES = lookup.LOCAL_DIR / "data" / "raw" / "sider" / "drug_names.tsv"
-MEPS_DIR = lookup.LOCAL_DIR / "data" / "raw" / "meps"
 OUT_DIR = lookup.LOCAL_DIR / "data" / "handfix"
-
-MEPS_FILES = {2015: "h178a", 2016: "h188a", 2017: "h197a"}  # §11.2: 2015-2017 only
-MEPS_RXNAV_CACHE = "rxnav_meps.json"
-MEPS_SEPARATORS = ("-",)  # §4: MEPS combinations split at '-'
 
 UNMATCHED, MULTI_IN, NAME_EXACT, NAME_LOOSE = "unmatched", "multi_in", "name_exact", "name_loose"
 FROM_AUTO, FROM_SIDER, FROM_NAME_HIT = "automatic", "sider_name", "name_hit"
@@ -142,27 +137,6 @@ def name_check(units: pd.DataFrame, names: pd.DataFrame) -> pd.DataFrame:
         for s, group in loose.groupby("stitch_id"):
             hits.append((*u, "loose", s, "; ".join(sorted(group.name)[:3])))
     return pd.DataFrame(hits, columns=HIT_COLUMNS)
-
-
-# --- MEPS drug rows (names only; the MEPS tables are #62) ---
-
-
-def load_meps_drug_rows(years=tuple(MEPS_FILES), raw_dir: Path = MEPS_DIR) -> pd.DataFrame:
-    """PMED records with a positive person weight, as `person_drugs.build` takes them."""
-    tables = []
-    for year in years:
-        f = MEPS_FILES[year]
-        d = pd.read_sas(Path(raw_dir) / f / f"{f}.ssp", format="xport", encoding="latin-1")
-        d = d[d[f"PERWT{year % 100}F"] > 0]
-        tables.append(pd.DataFrame({
-            "source": "MEPS",
-            "cycle": str(year),
-            "seqn": d.DUPERSID.astype(str),
-            "round": d.PURCHRD.astype("int64"),
-            "code": "",
-            "name": d.RXDRGNAM.fillna("").astype(str).str.strip(),
-        }))
-    return pd.concat(tables, ignore_index=True)
 
 
 # --- Evidence ---
@@ -289,6 +263,7 @@ def _hit_units(hits: pd.DataFrame) -> str:
 
 def main(out_dir: Path = OUT_DIR, cache_dir: Path = lookup.CACHE_DIR) -> None:
     from sief_druco import decagon
+    from sief_druco.burden import meps
 
     d = decagon.load()
     counts = dt.labelled_pair_counts(d)
@@ -296,20 +271,16 @@ def main(out_dir: Path = OUT_DIR, cache_dir: Path = lookup.CACHE_DIR) -> None:
     table = dt.build(d.drug_ids, counts, overrides_path=Path(out_dir) / "no-overrides.csv", cache_dir=cache_dir)
     pc = Cache(Path(cache_dir) / dt.PUBCHEM_CACHE, lookup.PUBCHEM_INTERVAL)
     rx = Cache(Path(cache_dir) / dt.RXNAV_CACHE, lookup.RXNAV_INTERVAL)
-    meps_rx = Cache(Path(cache_dir) / MEPS_RXNAV_CACHE, lookup.RXNAV_INTERVAL)
     try:
         sider = sider_names()
         names = decagon_names(table, sider, pc, rx)
         nhanes_drugs = pdr.build_nhanes(nhanes.MAIN_POOL, table.stitch_of, cache_dir=cache_dir)
-        resolver = Resolver(meps_rx)
-        meps_drugs = pdr.build(
-            load_meps_drug_rows(), lambda _, name: resolver.name(name, MEPS_SEPARATORS), table.stitch_of
-        )
+        meps_drugs = meps.build_person_drugs(meps.load_records(), table.stitch_of, cache_dir)
         units = pd.concat([source_units(nhanes_drugs), source_units(meps_drugs)], ignore_index=True)
         hits = name_check(units, names)
         sheet = evidence_sheet(table, hits, sider, counts, pc, rx)
     finally:
-        for c in (pc, rx, meps_rx):
+        for c in (pc, rx):
             c.save()
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
