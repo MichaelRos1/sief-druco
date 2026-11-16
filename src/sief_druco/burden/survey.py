@@ -18,6 +18,16 @@ import numpy as np
 import scipy.sparse as sp
 from scipy import stats
 
+# Sources with point estimates only: MEPS has no HC-036 linkage and no BRR (§11.2).
+POINT_ONLY_SOURCES = frozenset({"MEPS"})
+
+
+def check_variance_allowed(persons) -> None:
+    """Raise if `persons` holds a source that gets no variance or interval."""
+    found = POINT_ONLY_SOURCES & set(persons["source"])
+    if found:
+        raise ValueError(f"{sorted(found)}: point estimates only, no variance or interval (spec §11.2)")
+
 
 @dataclass(frozen=True)
 class Design:
@@ -64,7 +74,10 @@ class Design:
 
     @classmethod
     def from_persons(cls, persons) -> "Design":
-        """Design of a `persons` table (spec §5): pooled weight, stratum, PSU."""
+        """Design of a `persons` table (spec §5): pooled weight, stratum, PSU.
+
+        Refuses sources with point estimates only (MEPS, §11.2)."""
+        check_variance_allowed(persons)
         return cls.from_arrays(persons["weight"], persons["stratum"], persons["psu"])
 
     @property

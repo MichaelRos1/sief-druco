@@ -8,6 +8,9 @@ interval is Korn–Graubard from the Taylor variance (`survey`). A subgroup (one
 cycle, an age band) is a survey domain: the same estimator with `domain`, so the
 share is of the domain's own population.
 
+MEPS (§11.2) gets point estimates only (`point_prevalence`): `pair_prevalence`
+refuses it.
+
 A pair is **ranked** only with ≥ `RANK_MIN` unweighted participants; every covered
 pair still counts everywhere else (coverage, totals, burden shares).
 
@@ -55,6 +58,7 @@ def pair_prevalence(persons: pd.DataFrame, pairs: pd.DataFrame, domain=None, des
     `participants`: unweighted persons taking the pair (within `domain`).
     `prevalence`, `ci_low`, `ci_high`: per 100,000 people (of the domain).
     """
+    survey.check_variance_allowed(persons)
     design = design or survey.Design.from_persons(persons)
     y, out = pair_matrix(persons, pairs)
     dom = np.ones(len(persons), bool) if domain is None else np.asarray(domain, bool)
@@ -63,6 +67,18 @@ def pair_prevalence(persons: pd.DataFrame, pairs: pd.DataFrame, domain=None, des
     out["participants"] = np.asarray(y.T @ dom.astype(float)).astype(int)
     out["prevalence"] = PER * np.asarray(est.value)
     out["ci_low"], out["ci_high"] = PER * lo, PER * hi
+    return out[COLUMNS].sort_values(["prevalence", "unit_a", "unit_b"], ascending=[False, True, True]).reset_index(drop=True)
+
+
+def point_prevalence(persons: pd.DataFrame, pairs: pd.DataFrame) -> pd.DataFrame:
+    """As `pair_prevalence`, without a design: Σ weights taking the pair ÷ Σ all
+    weights, per 100,000. `ci_low` / `ci_high` are empty. For MEPS (§11.2), whose
+    prevalence is used only for the top-50 overlap."""
+    y, out = pair_matrix(persons, pairs)
+    w = persons.weight.to_numpy(float)
+    out["participants"] = np.asarray(y.sum(axis=0)).astype(int)
+    out["prevalence"] = PER * np.asarray(y.T @ w) / w.sum()
+    out["ci_low"] = out["ci_high"] = np.nan
     return out[COLUMNS].sort_values(["prevalence", "unit_a", "unit_b"], ascending=[False, True, True]).reset_index(drop=True)
 
 

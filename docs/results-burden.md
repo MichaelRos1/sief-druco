@@ -101,3 +101,42 @@ Per §3's order of work, the pipeline was built on NHANES 2017–2018 (`J`) and 
 
 - **Without the hand fixes** the pipeline reproduces the pilot. The only difference: the pilot counted an alias `IN` and its main `IN` (methylphenidate and dexmethylphenidate) as two drugs, so a third drug paired with each gave two pairs. De-duplicating covered drugs by STITCH ID (§5) merges 28 such pairs. The covered column of the coverage table matches the pilot's too: 15,560 ingredient mentions (84.0% covered), 2,941 participants with ≥ 2 drugs (50.7% covered, 47.6% weighted) and 69.2% of weighted person-pairs. The split of the rest between *not in the model* and *mapping failed* differs slightly, since the Decagon-side name check differs: the pilot's flagged risedronate, a matched Decagon drug, while this one adds SIDER names and flags only Decagon drugs that reached no `IN` (sevelamer, acarbose and ceftazidime here).
 - **With the hand fixes,** 753 more covered pairs, 43 more pass 10 participants and 4 more pass 30. They are the pairs of the drugs #55 joined, mostly montelukast, rosuvastatin and allopurinol. Participants with all drugs covered rise from 50.7% to 57.9% and weighted person-pairs covered from 69.2% to 74.5%, so the main pool's coverage table can't be compared with the pilot's directly.
+
+## Re-run data: MEPS 2015–2017 (light)
+
+The MEPS re-run tests exposure measured by purchases rather than 30-day use (§11.2; #62). This section holds its data and coverage; the top-50 overlap with the main result comes with #63. MEPS prevalence is used only for that overlap and is not reported as a finding.
+
+- **Data:** Prescribed Medicines files HC-178A (2015), HC-188A (2016) and HC-197A (2017), one record per purchase. 2018–2019 are left out (the spring 2018 questionnaire redesign). 960,625 records of 56,724 person-years (42,007 distinct persons); a person present in two years counts as two person-years. Weights `PERWTyyF / 3`. Point estimates only: no HC-036 linkage, no BRR.
+- **Co-prescribed** = both drugs bought in the same purchase round (`PURCHRD`, about 4 months), counted once per person-year. 43,071 person-years have ≥ 2 distinct ingredients, 41,678 of them within one round.
+- **Denominator:** the people on the PMED files (195.6 million, weighted), since people with no purchase aren't listed. This rescales every pair equally, so the top-50 overlap doesn't change.
+- **Mapping:** `RXDRGNAM` → `IN` by name under §4's rules, combinations split at `-`, with the hand fixes of `data/decagon_overrides.csv`. **92.9% of records reach an `IN`** (research note: 93.1%; its pilot also split names at `/` and ` AND `).
+- **Run:** `python -m sief_druco.burden.meps`, 2026-11-16. Tables in `local/data/burden/meps/2015_2016_2017/`.
+
+### Coverage
+
+Share of each row by status, in %, as in §6. A mention here is a purchase record × ingredient, not a 30-day drug mention, so the rows can't be compared with NHANES one to one.
+
+| Row | Total | Covered | Not in the model | Mapping failed |
+|---|---|---|---|---|
+| Distinct ingredients | 690 | 44.6 | 31.0 | 24.3 |
+| Distinct ingredients, weighted by their users | 932.1 M | 77.2 | 16.7 | 6.1 |
+| Mentions | 1,053,431 | 79.3 | 14.3 | 6.5 |
+| Mentions, weighted | 3,619.1 M | 79.0 | 14.8 | 6.2 |
+| Person-years with ≥ 2 drugs | 44,215 | 34.7 | 37.5 | 27.8 |
+| Person-years with ≥ 2 drugs, weighted | 154.2 M | 33.9 | 39.0 | 27.0 |
+| Person-pairs | 844,726 | 60.3 | 27.2 | 12.5 |
+| Person-pairs, weighted | 2,928.0 M | 60.4 | 27.4 | 12.2 |
+
+- *Mapping failed* is far larger than in NHANES (6.5% against 1.2% of mentions), and it comes from the files, not the mapping: MEPS replaces drugs used by fewer than 200,000 people with their therapeutic class, and diabetic supplies carry no name. Over a year of purchases, one masked or nameless record is enough to put a person-year in *mapping failed*, so only a third of person-years have every drug covered.
+- 60% of weighted person-pairs can be scored (NHANES main pool: 75%).
+
+**Supplement: mapping failed by side and cause.**
+
+| Side | Cause | Drugs | Mentions | % of mentions | % weighted |
+|---|---|---|---|---|---|
+| Source | no name (`RXDRGNAM` = -9; almost all diabetic supplies) | 1 | 22,890 | 2.17 | 2.06 |
+| Source | name not found (class labels, multivitamins, topicals) | 167 | 45,125 | 4.28 | 4.16 |
+| Decagon | Decagon drug reached no `IN` | 0 | 0 | 0 | 0 |
+
+- The most common names that don't map are therapeutic-class labels (psychotherapeutic agents 2,586 records, antiviral agents 2,471, CNS agents 1,749, narcotic analgesics 1,729) and multivitamins (1,658). No source-side hand fixes (§4).
+- **Footnote:** the file documentation counts 5,496 / 4,473 / 4,226 fewer records with a positive person weight in 2015 / 2016 / 2017 than the released files, where every record has one (324,957 against 330,453 in 2015). The released weights are used.
