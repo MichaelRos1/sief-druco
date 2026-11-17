@@ -147,7 +147,7 @@ Share of each row by status, in %, as in §6. A mention here is a purchase recor
 The FAERS-era re-run tests the time gap between the labels (TWOSIDES covers AERS Q1 2004 – Q1 2009) and the exposure (the main pool centres on ~2017) (§11.2; #22, #63). This section holds its data and coverage; the top-50 overlap with the main result comes with the final run (#64).
 
 - **Data:** NHANES 2005–2006 (`D`) + 2007–2008 (`E`), interview weights `WTINT2YR × 1/2`, Taylor variance on the stacked strata (44–74; the cycles don't share one). 20,497 participants; 8,166 reported a prescription drug in the past 30 days, 5,830 at least two ingredients (#22 counted 5,258 with ≥ 2 drug codes; a combination product is one code but several ingredients). 15 refused or didn't know (`RXDUSE` 7 / 9). The weights sum to 294.4 million people.
-- **Mapping:** §4 unchanged, with the hand fixes of `data/decagon_overrides.csv`. **249 drug codes are not in the main pool's code table: 815 mentions, 3.1% of coded mentions**, 27 of them `a` / `c` / `h` codes (#22). Estriol is the class code `a70248` in 2005–06 (`d05027` in the main pool), so it stays *mapping failed* (no source-side hand fixes).
+- **Mapping:** §4 unchanged, with the hand fixes of `data/decagon_overrides.csv`. **249 drug codes are not in the main pool's code table: 815 mentions, 3.1% of coded mentions**, 27 of them `a` / `c` / `h` codes; this run reproduces #22's counts exactly. Estriol is the class code `a70248` in 2005–06 (`d05027` in the main pool), so it stays *mapping failed* (no source-side hand fixes).
 - **Run:** `python -m sief_druco.burden.stability <hand-off>`, 2026-11-17, dry run on the no-encoder hand-off. The coverage below doesn't depend on the scores.
 
 ### Coverage

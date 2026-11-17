@@ -46,7 +46,6 @@ from sief_druco.burden import prevalence as prv
 from sief_druco.burden import rankings as rk
 from sief_druco.burden import scores as sc
 from sief_druco.burden import survey
-from sief_druco.burden.ingredients import ACH_CODE
 
 OUT_DIR = rq2.OUT_DIR.parent / "stability"
 TOP = 50
@@ -73,7 +72,7 @@ def _in_top(rank: pd.Series, k: int) -> pd.Series:
     return rank.le(k).fillna(False).astype(bool)
 
 
-def compare(main: pd.DataFrame, rerun: pd.DataFrame, k: int = TOP, min_participants: int = prv.RANK_MIN) -> pd.DataFrame:
+def compare(main: pd.DataFrame, rerun: pd.DataFrame, k: int = TOP) -> pd.DataFrame:
     """Each pair of the main top `k` against a re-run (`DROPOUT_COLUMNS` less `rerun`).
 
     `main`, `rerun`: tables of `rankings.pair_burden`, each ranked within its own data.
@@ -87,7 +86,7 @@ def compare(main: pd.DataFrame, rerun: pd.DataFrame, k: int = TOP, min_participa
     out["rerun_participants"] = out.rerun_participants.fillna(0).astype(int)
     out["in_top"] = _in_top(out.rerun_rank, k).to_numpy()
     out["reason"] = np.select(
-        [out.in_top, out.rerun_participants == 0, out.rerun_participants < min_participants],
+        [out.in_top, out.rerun_participants == 0, out.rerun_participants < prv.RANK_MIN],
         ["", NOT_OBSERVED, BELOW_MIN],
         RANKED_LOWER,
     )
@@ -105,7 +104,9 @@ def overlap(rerun: pd.DataFrame, comparison: pd.DataFrame, k: int = TOP) -> dict
     }
 
 
-def stability(main: pd.DataFrame, reruns: dict[str, pd.DataFrame], k: int = TOP) -> tuple[pd.DataFrame, pd.DataFrame]:
+def stability(
+    main: pd.DataFrame, reruns: dict[str, pd.DataFrame], k: int = TOP
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """The overlap table and the drop-out table of every re-run against `main`."""
     rows, dropouts = [], []
     for name, rerun in reruns.items():
@@ -138,7 +139,9 @@ def code_status(person_drugs: pd.DataFrame, code: str) -> pd.DataFrame:
     return person_drugs.loc[person_drugs.code == code, ["status", "cause", "name", "mentions"]]
 
 
-def burden(exposure: rq2.Exposure, table: sc.ScoreTable, point: bool = False, domain=None, design=None) -> pd.DataFrame:
+def burden(
+    exposure: rq2.Exposure, table: sc.ScoreTable, point: bool = False, domain=None, design=None
+) -> pd.DataFrame:
     """`rankings.pair_burden` of one pool, ranked within it: survey prevalence (of a
     `domain`'s own population if given), or point prevalence for MEPS."""
     if point:
@@ -160,36 +163,41 @@ def run(
     table = sc.read(handoff)
     look = {"cache_dir": cache_dir, "fetch": fetch}
 
-    e = rq2.exposure(nhanes.MAIN_POOL, raw_dir=nhanes_raw_dir, **look)
-    design = survey.Design.from_persons(e.persons)
-    main = burden(e, table, design=design)
+    pool = rq2.exposure(nhanes.MAIN_POOL, raw_dir=nhanes_raw_dir, **look)
+    design = survey.Design.from_persons(pool.persons)
+    main = burden(pool, table, design=design)
     reruns = {
-        name: burden(e, table, domain=(e.persons.cycle == cycle).to_numpy(), design=design)
+        name: burden(pool, table, domain=(pool.persons.cycle == cycle).to_numpy(), design=design)
         for name, cycle in CYCLE_OF.items()
     }
 
-    f = rq2.exposure(nhanes.FAERS_ERA_POOL, raw_dir=nhanes_raw_dir, **look)
-    reruns[FAERS_ERA] = burden(f, table)
-    m = meps.exposure(meps.load_records(meps.YEARS, meps_raw_dir), **look)
-    reruns[MEPS] = burden(m, table, point=True)
+    faers = rq2.exposure(nhanes.FAERS_ERA_POOL, raw_dir=nhanes_raw_dir, **look)
+    reruns[FAERS_ERA] = burden(faers, table)
+    purchases = meps.exposure(meps.load_records(meps.YEARS, meps_raw_dir), **look)
+    reruns[MEPS] = burden(purchases, table, point=True)
 
-    names = {k: v for x in (m, f, e) for k, v in rq2.unit_names(x.table, x.person_drugs).items()}
+    # A covered unit is a STITCH ID, named by its main `IN` in every pool.
+    names = {}
+    for x in (purchases, faers, pool):
+        names |= rq2.unit_names(x.table, x.person_drugs)
     overlaps, dropouts = stability(main, reruns)
 
     codes = new_codes(
         nhanes.load_drug_rows(nhanes.FAERS_ERA_POOL, nhanes_raw_dir),
         nhanes.load_drug_rows(nhanes.MAIN_POOL, nhanes_raw_dir),
     )
-    estriol = code_status(f.person_drugs, ESTRIOL_CODE)
-    counts = cov.counts(f.persons, f.person_drugs) | codes | {
+    estriol = code_status(faers.person_drugs, ESTRIOL_CODE)
+    if estriol.empty:
+        raise ValueError(f"no FAERS-era row has the estriol code {ESTRIOL_CODE}")
+    counts = cov.counts(faers.persons, faers.person_drugs) | codes | {
         "estriol_a70248_status": ";".join(sorted(set(estriol.status))),
-        "population": round(f.persons.weight.sum()),
+        "population": round(faers.persons.weight.sum()),
     }
     out = {
         "overlap": overlaps,
         "dropouts": rq2.named(dropouts, names),
-        "faers_coverage": cov.table(f.persons, f.person_drugs, f.pairs),
-        "faers_failures": cov.failures(f.persons, f.person_drugs),
+        "faers_coverage": cov.table(faers.persons, faers.person_drugs, faers.pairs),
+        "faers_failures": cov.failures(faers.persons, faers.person_drugs),
         "faers_counts": pd.DataFrame(list(counts.items()), columns=["what", "n"]),
     }
     out_dir = Path(out_dir or OUT_DIR / handoff.name)
