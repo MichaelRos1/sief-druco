@@ -104,7 +104,7 @@ Per §3's order of work, the pipeline was built on NHANES 2017–2018 (`J`) and 
 
 ## Re-run data: MEPS 2015–2017 (light)
 
-The MEPS re-run tests exposure measured by purchases rather than 30-day use (§11.2; #62). This section holds its data and coverage; the top-50 overlap with the main result comes with #63. MEPS prevalence is used only for that overlap and is not reported as a finding.
+The MEPS re-run tests exposure measured by purchases rather than 30-day use (§11.2; #62). This section holds its data and coverage; the top-50 overlap with the main result comes with the final run (#64). MEPS prevalence is used only for that overlap and is not reported as a finding.
 
 - **Data:** Prescribed Medicines files HC-178A (2015), HC-188A (2016) and HC-197A (2017), one record per purchase. 2018–2019 are left out (the spring 2018 questionnaire redesign). 960,625 records of 56,724 person-years (42,007 distinct persons); a person present in two years counts as two person-years. Weights `PERWTyyF / 3`. Point estimates only: no HC-036 linkage, no BRR.
 - **Co-prescribed** = both drugs bought in the same purchase round (`PURCHRD`, about 4 months), counted once per person-year. 43,071 person-years have ≥ 2 distinct ingredients, 41,678 of them within one round.
@@ -141,3 +141,37 @@ Share of each row by status, in %, as in §6. A mention here is a purchase recor
 - **What the hand fixes and aliases moved:** against the same run without the overrides, 26,196 of 1,053,431 mentions (2.5%) moved into *covered*. 25,862 came from *not in the model*, led by montelukast 8,109, rosuvastatin 5,346 and allopurinol 4,266. 334 came from Decagon-side *mapping failed* (sevelamer, vitamin K1). 981 moved out: betamethasone and isotretinoin, dropped as provisional joins, plus heparin and sorbitol. 2,294 covered mentions join through an alias `IN`.
 - The most common names that don't map are therapeutic-class labels (psychotherapeutic agents 2,586 records, antiviral agents 2,471, CNS agents 1,749, narcotic analgesics 1,729) and multivitamins (1,658). No source-side hand fixes (§4).
 - **Footnote:** the file documentation counts 5,496 / 4,473 / 4,226 fewer records with a positive person weight in 2015 / 2016 / 2017 than the released files, where every record has one (324,957 against 330,453 in 2015). The released weights are used.
+
+## Re-run data: FAERS-era pool (NHANES 2005–2008)
+
+The FAERS-era re-run tests the time gap between the labels (TWOSIDES covers AERS Q1 2004 – Q1 2009) and the exposure (the main pool centres on ~2017) (§11.2; #22, #63). This section holds its data and coverage; the top-50 overlap with the main result comes with the final run (#64).
+
+- **Data:** NHANES 2005–2006 (`D`) + 2007–2008 (`E`), interview weights `WTINT2YR × 1/2`, Taylor variance on the stacked strata (44–74; the cycles don't share one). 20,497 participants; 8,166 reported a prescription drug in the past 30 days, 5,830 at least two ingredients (#22 counted 5,258 with ≥ 2 drug codes; a combination product is one code but several ingredients). 15 refused or didn't know (`RXDUSE` 7 / 9). The weights sum to 294.4 million people.
+- **Mapping:** §4 unchanged, with the hand fixes of `data/decagon_overrides.csv`. **249 drug codes are not in the main pool's code table: 815 mentions, 3.1% of coded mentions**, 27 of them `a` / `c` / `h` codes; this run reproduces #22's counts exactly. Estriol is the class code `a70248` in 2005–06 (`d05027` in the main pool), so it stays *mapping failed* (no source-side hand fixes).
+- **Run:** `python -m sief_druco.burden.stability <hand-off>`, 2026-11-17, dry run on the no-encoder hand-off. The coverage below doesn't depend on the scores.
+
+### Coverage
+
+Share of each row by status, in %, as in §6.
+
+| Row | Total | Covered | Not in the model | Mapping failed |
+|---|---|---|---|---|
+| Distinct ingredients | 690 | 63.3 | 28.0 | 8.7 |
+| Distinct ingredients, weighted by their users | 494.3 M | 84.6 | 14.7 | 0.7 |
+| Mentions | 29,471 | 85.5 | 13.3 | 1.2 |
+| Mentions, weighted | 500.5 M | 84.2 | 14.7 | 1.1 |
+| Participants with ≥ 2 drugs | 5,830 | 54.9 | 42.2 | 2.9 |
+| Participants with ≥ 2 drugs, weighted | 102.2 M | 52.8 | 44.5 | 2.8 |
+| Person-pairs | 73,209 | 75.4 | 23.7 | 0.9 |
+| Person-pairs, weighted | 1,213.3 M | 73.3 | 25.8 | 0.9 |
+
+- Coverage is close to the main pool's (weighted person-pairs covered: 73.3% against 75.1%): fifteen years earlier, the 645 Decagon drugs cover about the same share of co-medication.
+
+**Supplement: mapping failed by side and cause.**
+
+| Side | Cause | Drugs | Mentions | % of mentions | % weighted |
+|---|---|---|---|---|---|
+| Source | `a` / `c` / `h` code | 43 | 134 | 0.45 | 0.40 |
+| Source | no drug code (55555 / 77777 / 99999) | 122 records | 122 | 0.41 | 0.36 |
+| Source | retired RxNorm concept | 17 | 103 | 0.35 | 0.34 |
+| Decagon | Decagon drug reached no `IN` | 0 | 0 | 0 | 0 |
