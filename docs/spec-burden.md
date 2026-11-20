@@ -131,7 +131,7 @@ Every covered pair and triple gets **two labels, never merged**:
 - **Headline ("how much is undocumented"):** the 2×2 as **shares of total burden** over all covered pairs and over all covered triples, with no count floor.
 - **Top-k tables:** the 2×2 for the **top 50 pairs** and the **top 50 triples** of the ranked set (≥ 30 participants), read against the base rate over all covered pairs and triples.
 - **Novelty candidate list:** candidates with **≥ 10 participants** in the pool, ordered by pair burden; those under 30 flagged as imprecise. NHANES 2017–18: only 3 of 682 candidate pairs reach 10 participants, so the ≥ 30 rule would leave almost none.
-- **DrugBank hand check:** the top 20 of the candidate list (all of it if shorter), looked up by hand in DrugBank's interaction checker once, at the end. Record listed yes/no + severity, copy no text, cite DrugBank 6.0 (read as within DrugBank's terms for non-clinical research; not legal advice).
+- **DrugBank hand check:** the top 20 of the candidate list (all of it if shorter), looked up by hand in DrugBank once, at the end (the free interaction checker is gone, so in the interaction list of the drug's page; #64). Record listed yes/no + severity where DrugBank shows it, copy no text, cite DrugBank 6.0 (read as within DrugBank's terms for non-clinical research; not legal advice).
 
 **Not used:** TWOSIDES / nSIDES (FAERS-derived, circular with the labels); CRESCENDDI (4.2% of covered pair weight, not a complete list); Drugs.com (terms forbid scraping and need written consent for research); the prospective FAERS check (cut on #19). DDInter is CC BY-NC-SA 4.0: its files stay in `local/`, only derived labels are reported.
 
