@@ -221,25 +221,25 @@ Every covered pair and triple has two labels: **known to Decagon** (pair: any tr
 
 - **Pairs:** 99.6% of the pair burden is in pairs Decagon already knows, so the burden of pairs that are new to both sources (the bold cell) is 0.27%. The model scores unlabelled pairs roughly ten times lower than labelled ones (mean Σ_r `p_r` 12 against 108), and the unlabelled pairs are rarer.
 - **Triples:** 70% of the triple burden is in side effects a pair has no label for, and 46.6% is new to both sources. The DDInter half of that is pair-level only: a documented pair says nothing about which side effect it causes.
-- **Footnote, DDInter "Unknown":** 64.1% of the pair burden (61.4% of covered pair weight) is in pairs DDInter lists without a grade. They count as not documented, so almost all of the 66% "not documented" pair burden is DDInter-listed but ungraded. Pairs DDInter doesn't list at all hold about 2% of the burden.
+- **Footnote, DDInter "Unknown":** 64.1% of the pair burden (61.4% of covered pair weight) is in pairs DDInter lists without a grade. They count as not documented, so almost all of the 66% "not documented" pair burden is DDInter-listed but ungraded. Checkable pairs DDInter doesn't list hold 2.2% of the burden (2.7% with the not-checkable pairs).
 - **Checkable:** DDInter can check 99.5% of the pair burden (99.3% of covered pair weight). 1,896 of DDInter's 1,971 drug names reach an `IN`, and 630 of the 645 Decagon drugs appear in DDInter.
 
 **Top 50 against the base rate.** The 2×2 for the top 50 ranked pairs and top 50 ranked triples, as counts, next to the share of all covered pairs and triples in each cell (a count share, not a burden share).
 
 | Level | Known to Decagon / clinically documented | Top 50 | Top 50 (%) | All covered (%) |
 |---|---|---|---|---|
-| Pairs | documented / documented | 20 | 40 | 26.3 |
-| Pairs | documented / not documented | 30 | 60 | 59.6 |
-| Pairs | documented / not checkable | 0 | 0 | 1.6 |
-| Pairs | not documented / documented | 0 | 0 | 2.4 |
-| Pairs | not documented / not documented | 0 | 0 | 9.8 |
-| Pairs | not documented / not checkable | 0 | 0 | 0.3 |
-| Triples | documented / documented | 11 | 22 | 3.7 |
-| Triples | documented / not documented | 6 | 12 | 7.3 |
-| Triples | documented / not checkable | 0 | 0 | 0.2 |
-| Triples | not documented / documented | 32 | 64 | 25.0 |
-| Triples | not documented / not documented | 1 | 2 | 62.1 |
-| Triples | not documented / not checkable | 0 | 0 | 1.7 |
+| Pairs | known / documented | 20 | 40 | 26.3 |
+| Pairs | known / not documented | 30 | 60 | 59.6 |
+| Pairs | known / not checkable | 0 | 0 | 1.6 |
+| Pairs | not known / documented | 0 | 0 | 2.4 |
+| Pairs | not known / not documented | 0 | 0 | 9.8 |
+| Pairs | not known / not checkable | 0 | 0 | 0.3 |
+| Triples | known / documented | 11 | 22 | 3.7 |
+| Triples | known / not documented | 6 | 12 | 7.3 |
+| Triples | known / not checkable | 0 | 0 | 0.2 |
+| Triples | not known / documented | 32 | 64 | 25.0 |
+| Triples | not known / not documented | 1 | 2 | 62.1 |
+| Triples | not known / not checkable | 0 | 0 | 1.7 |
 
 - All top 50 pairs are known to Decagon, against 87.5% of covered pairs. DDInter grades 20 of them (14 Moderate, 5 Minor, 1 Major: amlodipine + simvastatin); the other 30 are DDInter "Unknown".
 - Among the top 50 triples, the most common pattern (32) is a documented pair with a side effect Decagon has no label for.
@@ -276,9 +276,9 @@ Pairs neither known to Decagon nor clinically documented, with ≥ 10 participan
 | 7 | glipizide + hydralazine | yes | not shown |
 | 8 | hydralazine + isosorbide dinitrate | no | — |
 
-- **5 of 8 are listed.** Four of them (metformin, gabapentin, allopurinol, glipizide) are generic entries about added liver toxicity; only losartan's concerns blood pressure. These listings are broad entries, not evidence specific to the pair.
-- **No severity is shown** in the signed-in drug-page view, so it can't be recorded.
-- **Footnote:** hydrochlorothiazide and isosorbide dinitrate each list an interaction with dihydralazine, a related drug, but none with hydralazine.
+- **5 of 8 are listed:** losartan, metformin, gabapentin, allopurinol and glipizide with hydralazine.
+- **Severity: partial.** The spec records severity, but the signed-in drug-page view shows none, so the column can't be filled. The check is otherwise complete.
+- **Footnote:** the partner pages of hydrochlorothiazide and isosorbide dinitrate list dihydralazine, a different drug, but not hydralazine.
 
 ## RQ4: patient groups
 
@@ -286,17 +286,17 @@ Burden by age band and by drug-count band on the main pool (§9). A person's bur
 
 - **Run:** `python -m sief_druco.burden.rq4 local/crossfit/additive_free_w-none_lr0.01`, 2026-11-20. Tables in `local/data/burden/rq4/additive_free_w-none_lr0.01/`.
 
-| Band | Participants | Population (%) | Share of burden (%) | Burden per 100,000 band members, millions (95% CI) | Covered pairs per person | Rankable pairs |
+| Band | Participants | Population (%) | Share of burden (%) | Burden per 100,000 band members (95% CI) | Covered pairs per person | Rankable pairs |
 |---|---|---|---|---|---|---|
-| Age 0–17 | 9,846 | 23.4 | 1.3 | 2.6 (2.0–3.3) | 0.23 | 5 |
-| Age 18–44 | 6,693 | 35.1 | 9.9 | 13.2 (11.0–15.3) | 1.05 | 2 |
-| Age 45–64 | 5,203 | 26.0 | 41.4 | 74.8 (67.2–82.4) | 5.46 | 101 |
-| Age 65+ | 3,789 | 15.5 | 47.4 | 143.8 (132.2–155.5) | 10.55 | 209 |
+| Age 0–17 | 9,846 | 23.4 | 1.3 | 2.6 M (2.0–3.3 M) | 0.23 | 5 |
+| Age 18–44 | 6,693 | 35.1 | 9.9 | 13.2 M (11.0–15.3 M) | 1.05 | 2 |
+| Age 45–64 | 5,203 | 26.0 | 41.4 | 74.8 M (67.2–82.4 M) | 5.46 | 101 |
+| Age 65+ | 3,789 | 15.5 | 47.4 | 143.8 M (132.2–155.5 M) | 10.55 | 209 |
 | Drugs 0–1 | 17,656 | 64.1 | 0 | — | — | — |
-| Drugs 2 | 2,075 | 9.6 | 1.9 | 9.4 (8.9–9.9) | 0.67 | 2 |
-| Drugs 3–4 | 2,489 | 11.8 | 11.5 | 45.5 (43.2–47.7) | 3.27 | 32 |
-| Drugs 5–9 | 2,652 | 11.8 | 49.3 | 195.9 (188.0–203.7) | 14.32 | 166 |
-| Drugs 10+ | 659 | 2.7 | 37.3 | 660.0 (620.1–699.9) | 50.08 | 111 |
+| Drugs 2 | 2,075 | 9.6 | 1.9 | 9.4 M (8.9–9.9 M) | 0.67 | 2 |
+| Drugs 3–4 | 2,489 | 11.8 | 11.5 | 45.5 M (43.2–47.7 M) | 3.27 | 32 |
+| Drugs 5–9 | 2,652 | 11.8 | 49.3 | 195.9 M (188.0–203.7 M) | 14.32 | 166 |
+| Drugs 10+ | 659 | 2.7 | 37.3 | 660.0 M (620.1–699.9 M) | 50.08 | 111 |
 
 - **Age:** people aged 65+, 15.5% of the population (≈ 49.6 million US residents), hold 47.4% of the burden; with the 45–64 band, people aged 45+ hold 88.8%. A person aged 65+ carries on average ≈ 1,440 expected signals, one aged 0–17 ≈ 26.
 - **Drug count:** people on 5 or more drugs, 14.5% of the population (≈ 46.4 million), hold 86.6% of the burden. People on 10 or more, 2.7% (≈ 8.5 million), hold 37.3%.
@@ -413,7 +413,7 @@ Burden by age band and by drug-count band on the main pool (§9). A person's bur
 
 The AGS 2023 Beers Criteria Table 5 list of `data/positive_controls.csv` (#60), fixed before any score was seen. **Model view:** a control is *recovered* if its `p_r` is in the top 10% of all 207,690 pairs for at least one mapped side effect (ties count against it). **Burden view:** its overall rank and whether it reaches the top 50.
 
-- **Run:** `python -m sief_druco.burden.controls local/crossfit/additive_free_w-none_lr0.01`, 2026-11-20. Tables, with every control's percentile and rank, in `local/data/burden/controls/additive_free_w-none_lr0.01/`.
+- **Run:** `python -m sief_druco.burden.controls local/crossfit/additive_free_w-none_lr0.01`, 2026-11-20. Tables in `local/data/burden/controls/additive_free_w-none_lr0.01/`. The full per-control report of §11.1 (each of the 787 controls with its labelled mark, best side effect, percentile, participants and rank) is `controls.csv` there; below are the per-entry counts and the controls common enough to matter for burden.
 
 | Entry | Beers interaction → outcome | Controls | Recovered | Known to Decagon | Ranked (≥ 30) | Top 50 |
 |---|---|---|---|---|---|---|
@@ -462,7 +462,7 @@ Each re-run forms its own top 50 by the main rule (≥ 30 participants, MEPS: pe
 | FAERS-era pool (2005–08) | time gap to the labels | 223 | **28** of 50 | 0 | 4 | 18 |
 | MEPS 2015–17 | purchases instead of 30-day use | 3,589 | **36** of 50 | 0 | 0 | 14 |
 
-Main-pool top-50 pairs that drop out, with main rank and the re-run's rank or reason:
+Each main-pool top-50 pair missing from a re-run's top 50 gets one reason: *not observed* (no participant takes it in the re-run), *below 30 participants* (too rare there to rank), or *ranked lower* (ranked, but below 50). The drop-outs, with main rank → re-run rank or reason:
 
 - **2015–16:** glipizide + metformin (35 → 54), gabapentin + metformin (39 → 63), atorvastatin + clopidogrel (43 → 68), gabapentin + lisinopril (44 → 55), losartan + omeprazole (46 → 56), clopidogrel + metoprolol (50 → 69).
 - **`P_`:** omeprazole + simvastatin (45 → 52), levothyroxine + amlodipine (48 → 54), amlodipine + simvastatin (49 → 55).
@@ -470,7 +470,7 @@ Main-pool top-50 pairs that drop out, with main rank and the re-run's rank or re
 - **MEPS:** losartan + metoprolol (31 → 55), metformin + omeprazole (33 → 53), glipizide + metformin (35 → 52), levothyroxine + losartan (36 → 81), gabapentin + metformin (39 → 69), furosemide + metoprolol (41 → 57), losartan + simvastatin (42 → 62), atorvastatin + clopidogrel (43 → 82), omeprazole + simvastatin (45 → 60), losartan + omeprazole (46 → 83), amlodipine + omeprazole (47 → 68), levothyroxine + amlodipine (48 → 59), amlodipine + simvastatin (49 → 64), clopidogrel + metoprolol (50 → 85).
 
 - **Cycle to cycle and MEPS:** the top 30 holds in every one of these re-runs. Only pairs near the cut at 50 drop out (main ranks 31–50), and they land just below it. Measuring exposure by 4-month purchase rounds instead of 30-day use gives the same core.
-- **FAERS-era:** 28 of 50. The drop-outs reach up to rank 9 and are mostly pairs with omeprazole (9 of 22) and losartan (7), which rank far lower in 2005–08 (losartan + metformin 21 → 186). Since `p` is the same, this is the change in co-prescription between 2005–08 and 2015–20: the burden ranking moves with prescribing over the decade that separates the labels from the main pool.
+- **FAERS-era:** 28 of 50. The drop-outs reach up to rank 9 and are mostly pairs with omeprazole (9 of 22) and losartan (7), which rank far lower in 2005–08 (losartan + metformin 21 → 186). Since `p` is the same in both, the difference comes from exposure, not the scores: the burden ranking moves with what people took over the decade that separates the labels from the main pool.
 
 ## Re-run data: MEPS 2015–2017 (light)
 
@@ -550,7 +550,7 @@ Share of each row by status, in %, as in §6.
 
 The limitations of §12, with what this run measured.
 
-- **Coverage:** the model is transductive, so drugs outside Decagon's 645 can't be scored. They cover 75.1% of the weighted co-prescribed person-pairs. The gap is drugs outside the 645 (ethinyl estradiol, hydrocodone, escitalopram, …), not mapping, which fails for about 1% (RQ2).
+- **Coverage:** the model is transductive, so drugs outside Decagon's 645 can't be scored. The 645 cover 75.1% of the weighted co-prescribed person-pairs; 24.3% involve a drug outside them. The gap is drugs outside the 645 (ethinyl estradiol, hydrocodone, escitalopram, …), not mapping, which fails for about 1% (RQ2).
 - **Mapping:** 11 Decagon drugs are joined by their Decagon single-drug side effects, not their PubChem structure (structure slips, §4; lithium among them). Three Decagon drugs reach no ingredient.
 - **Labels:** `p_r(a, b)` estimates "reported together with r in TWOSIDES (FAERS)", not causation. Unlabelled means "not reported", not "safe". The top side effects are broad reporting terms (pain, fatigue, low blood pressure).
 - **Exposure:** co-listing in NHANES means co-medication in the past 30 days, not that a side effect occurred. Burden is predicted exposure to a signal, not cases of harm.
@@ -558,6 +558,6 @@ The limitations of §12, with what this run measured.
 - **Ranking:** among pairs common enough to rank, nearly all are labelled and their Σ_r `p_r` varies little, so the burden ranking is close to the prevalence ranking (Spearman 0.95). The model's main effect on these results is the gap between labelled and unlabelled pairs.
 - **Time gap:** TWOSIDES covers AERS Q1 2004 – Q1 2009, and the pool centres on ~2017. On 2005–2008 exposure, 28 of the top 50 pairs stay; the drop-outs follow changes in co-prescription, mostly omeprazole and losartan pairs.
 - **Sums count drugs repeatedly:** a person's burden adds up pairs that share a drug, so it is not a patient risk, and its rise with drug count is mostly the number of pairs.
-- **Documentation:** DDInter lists 64% of the pair burden without a grade ("Unknown"), which counts as not documented. "Not clinically documented" therefore mostly means "listed by DDInter without a severity", and only about 2% of the pair burden is in pairs DDInter doesn't list.
+- **Documentation:** DDInter lists 64% of the pair burden without a grade ("Unknown"), which counts as not documented. "Not clinically documented" therefore mostly means "listed by DDInter without a severity", and only 2.2% of the pair burden is in checkable pairs DDInter doesn't list.
 - **No causal claims:** the rankings and the novelty candidates are prioritised hypotheses.
 - **Novelty of the method:** no precedent was found for combining a learned, calibrated risk with survey-weighted prevalence (#10; confidence medium–high). This file makes no priority claim. The Google Scholar citing-articles search of `research/prior-coprescription-burden.md` and the check of the Parker et al. 2017 wording behind the 30-participant rule (§7) are left for the paper. Related work: known-risk × prevalence (Sutherland 2015 on NHANES, Holm 2014, Guthrie 2015) and the closest ML work (Kee 2024, Hecker 2023, Dagenais 2024, Patrick 2021).
