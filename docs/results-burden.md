@@ -263,18 +263,22 @@ Pairs neither known to Decagon nor clinically documented, with ≥ 10 participan
 - The top candidate, hydralazine + losartan, is taken by ≈ 0.28 million US residents. Its burden is 773 per 100,000, against 388,745 for the top pair: the candidates are a short list of hypotheses, not a large hidden burden.
 - Hydralazine + isosorbide dinitrate is a fixed-dose combination (BiDil) as well as a co-prescription. Combination pills count as co-prescribed (§5).
 
-**DrugBank hand check (§10).** All 8 candidates (fewer than 20), looked up by hand in DrugBank's interaction checker. Listed yes/no and severity only; no text copied. Source: DrugBank 6.0 (Knox et al., *Nucleic Acids Research*, 2024), read as within DrugBank's terms for non-clinical research.
+**DrugBank hand check (§10).** All 8 candidates (fewer than 20), looked up by hand on 2026-11-20. DrugBank's free interaction checker is gone, so each pair was looked up in the drug-interaction list of hydralazine's DrugBank page (signed in). Pairs not found there were checked again from the partner drug's page. Listed yes/no only; no text copied. Source: DrugBank 6.0 (Knox et al., *Nucleic Acids Research*, 2024), read as within DrugBank's terms for non-clinical research.
 
 | # | Pair | Listed in DrugBank | Severity |
 |---|---|---|---|
-| 1 | hydralazine + losartan | _to check_ | |
-| 2 | hydralazine + metformin | _to check_ | |
-| 3 | hydralazine + hydrochlorothiazide | _to check_ | |
-| 4 | gabapentin + hydralazine | _to check_ | |
-| 5 | hydralazine + potassium chloride | _to check_ | |
-| 6 | hydralazine + allopurinol | _to check_ | |
-| 7 | glipizide + hydralazine | _to check_ | |
-| 8 | hydralazine + isosorbide dinitrate | _to check_ | |
+| 1 | hydralazine + losartan | yes | not shown |
+| 2 | hydralazine + metformin | yes | not shown |
+| 3 | hydralazine + hydrochlorothiazide | no | — |
+| 4 | gabapentin + hydralazine | yes | not shown |
+| 5 | hydralazine + potassium chloride | no | — |
+| 6 | hydralazine + allopurinol | yes | not shown |
+| 7 | glipizide + hydralazine | yes | not shown |
+| 8 | hydralazine + isosorbide dinitrate | no | — |
+
+- **5 of 8 are listed.** Four of them (metformin, gabapentin, allopurinol, glipizide) are generic entries about added liver toxicity; only losartan's concerns blood pressure. These listings are broad entries, not evidence specific to the pair.
+- **No severity is shown** in the signed-in drug-page view, so it can't be recorded.
+- **Footnote:** hydrochlorothiazide and isosorbide dinitrate each list an interaction with dihydralazine, a related drug, but none with hydralazine.
 
 ## RQ4: patient groups
 
