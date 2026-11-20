@@ -277,7 +277,7 @@ Pairs neither known to Decagon nor clinically documented, with ≥ 10 participan
 | 8 | hydralazine + isosorbide dinitrate | no | — |
 
 - **5 of 8 are listed:** losartan, metformin, gabapentin, allopurinol and glipizide with hydralazine.
-- **Severity: partial.** The spec records severity, but the signed-in drug-page view shows none, so the column can't be filled. The check is otherwise complete.
+- **Severity: not shown.** The signed-in drug-page view shows no severity, so none is recorded (accepted on #64).
 - **Footnote:** the partner pages of hydrochlorothiazide and isosorbide dinitrate list dihydralazine, a different drug, but not hydralazine.
 
 ## RQ4: patient groups
